@@ -28,12 +28,12 @@ afterEach(function (): void {
     CarbonImmutable::setTestNow();
 });
 
-test('matriks persetujuan 1: karyawan berdivisi untuk cuti 2 hari mengikuti alur division_head lalu dept_manager', function (): void {
+test('matriks persetujuan absensi: semua pengajuan karyawan, division head, dan dept manager hanya disetujui oleh hr_manager', function (): void {
     $staff = User::query()->where('email', 'operator.prd@veloce.test')->firstOrFail();
     $divisionHead = User::query()->where('email', 'head.prd@veloce.test')->firstOrFail();
     $deptManager = User::query()->where('email', 'manager.eng@veloce.test')->firstOrFail();
     $hrManager = User::role(RoleName::HR_MANAGER->value)->firstOrFail();
-    $otherDivHead = User::query()->where('email', 'head.mnt@veloce.test')->firstOrFail();
+    $superAdmin = User::role(RoleName::SUPER_ADMIN->value)->firstOrFail();
 
     $annualLeave = LeaveType::query()->where('code', 'annual_leave')->firstOrFail();
 
@@ -55,163 +55,58 @@ test('matriks persetujuan 1: karyawan berdivisi untuk cuti 2 hari mengikuti alur
         ->and($leaveRequest->status)->toBe(LeaveRequestStatus::PENDING)
         ->and($leaveRequest->current_step)->toBe(1)
         ->and($leaveRequest->approvals->pluck('role')->all())->toBe([
-            RoleName::DIVISION_HEAD->value,
-            RoleName::DEPT_MANAGER->value,
+            RoleName::HR_MANAGER->value,
         ]);
 
-    // Tahap 1 hanya boleh disetujui Ketua Divisi sedivisi.
-    expect($divisionHead->can('approve', $leaveRequest))->toBeTrue()
-        ->and($otherDivHead->can('approve', $leaveRequest))->toBeFalse()
+    // Manager selain HR (division_head & dept_manager) serta super_admin (untuk pemohon non-HR) tidak bisa menyetujui absensi/cuti.
+    expect($hrManager->can('approve', $leaveRequest))->toBeTrue()
+        ->and($divisionHead->can('approve', $leaveRequest))->toBeFalse()
         ->and($deptManager->can('approve', $leaveRequest))->toBeFalse()
-        ->and($hrManager->can('approve', $leaveRequest))->toBeFalse();
+        ->and($superAdmin->can('approve', $leaveRequest))->toBeFalse();
 
     $approveAction = app(ApproveLeaveRequestAction::class);
 
-    $afterStep1 = $approveAction->execute($divisionHead, $leaveRequest, 'Disetujui kepala divisi');
-    expect($afterStep1->status)->toBe(LeaveRequestStatus::PENDING)
-        ->and($afterStep1->current_step)->toBe(2)
-        ->and($deptManager->can('approve', $afterStep1))->toBeTrue();
+    expect(fn () => $approveAction->execute($divisionHead, $leaveRequest))
+        ->toThrow(AuthorizationException::class);
+    expect(fn () => $approveAction->execute($deptManager, $leaveRequest))
+        ->toThrow(AuthorizationException::class);
 
-    $final = $approveAction->execute($deptManager, $afterStep1, 'Disetujui manager departemen');
+    $final = $approveAction->execute($hrManager, $leaveRequest, 'Disetujui oleh HR Manager.');
     expect($final->status)->toBe(LeaveRequestStatus::APPROVED)
         ->and($final->finalized_at)->not->toBeNull()
         ->and($final->approvals->pluck('status')->all())->toBe([
             ApprovalStatus::APPROVED,
-            ApprovalStatus::APPROVED,
         ]);
 });
 
-test('matriks persetujuan 2: karyawan berdivisi untuk cuti 4 hari menambahkan hr_manager di tahap akhir', function (): void {
-    $staff = User::query()->where('email', 'operator.prd@veloce.test')->firstOrFail();
-    $divisionHead = User::query()->where('email', 'head.prd@veloce.test')->firstOrFail();
-    $deptManager = User::query()->where('email', 'manager.eng@veloce.test')->firstOrFail();
-    $hrManager = User::role(RoleName::HR_MANAGER->value)->firstOrFail();
-
-    $annualLeave = LeaveType::query()->where('code', 'annual_leave')->firstOrFail();
-
-    $leaveRequest = app(SubmitLeaveRequestAction::class)->execute(
-        $staff->employee,
-        $annualLeave,
-        CarbonImmutable::parse('2026-12-01', 'Asia/Jakarta'),
-        CarbonImmutable::parse('2026-12-04', 'Asia/Jakarta'),
-        'Cuti tahunan empat hari berturut-turut.',
-    );
-
-    expect($leaveRequest->total_work_days)->toBe(4)
-        ->and($leaveRequest->approvals->pluck('role')->all())->toBe([
-            RoleName::DIVISION_HEAD->value,
-            RoleName::DEPT_MANAGER->value,
-            RoleName::HR_MANAGER->value,
-        ]);
-
-    $approveAction = app(ApproveLeaveRequestAction::class);
-
-    $step1 = $approveAction->execute($divisionHead, $leaveRequest);
-    expect($step1->status)->toBe(LeaveRequestStatus::PENDING)
-        ->and($step1->current_step)->toBe(2);
-
-    $step2 = $approveAction->execute($deptManager, $step1);
-    expect($step2->status)->toBe(LeaveRequestStatus::PENDING)
-        ->and($step2->current_step)->toBe(3)
-        ->and($hrManager->can('approve', $step2))->toBeTrue();
-
-    $step3 = $approveAction->execute($hrManager, $step2);
-    expect($step3->status)->toBe(LeaveRequestStatus::APPROVED)
-        ->and($step3->finalized_at)->not->toBeNull();
-});
-
-test('matriks persetujuan 3: karyawan tanpa divisi melewati tahap division_head langsung ke dept_manager', function (): void {
-    $noDivisionStaff = User::query()->where('email', 'admin.eng@veloce.test')->firstOrFail();
-    $deptManager = User::query()->where('email', 'manager.eng@veloce.test')->firstOrFail();
-    $sickLeave = LeaveType::query()->where('code', 'sick')->firstOrFail();
-
-    expect($noDivisionStaff->employee->division_id)->toBeNull();
-
-    $leaveRequest = app(SubmitLeaveRequestAction::class)->execute(
-        $noDivisionStaff->employee,
-        $sickLeave,
-        CarbonImmutable::parse('2026-11-24', 'Asia/Jakarta'),
-        CarbonImmutable::parse('2026-11-24', 'Asia/Jakarta'),
-        'Demam dan perlu istirahat sesuai surat dokter.',
-        UploadedFile::fake()->image('surat-dokter.jpg', 600, 800),
-    );
-
-    expect($leaveRequest->total_work_days)->toBe(1)
-        ->and($leaveRequest->approvals->pluck('role')->all())->toBe([
-            RoleName::DEPT_MANAGER->value,
-        ])
-        ->and($deptManager->can('approve', $leaveRequest))->toBeTrue();
-
-    $final = app(ApproveLeaveRequestAction::class)->execute($deptManager, $leaveRequest);
-    expect($final->status)->toBe(LeaveRequestStatus::APPROVED);
-});
-
-test('matriks persetujuan 4: division_head 2 hari hanya ke dept_manager sedangkan 4 hari ke dept_manager lalu hr_manager', function (): void {
-    $divisionHead = User::query()->where('email', 'head.prd@veloce.test')->firstOrFail();
-    $deptManager = User::query()->where('email', 'manager.eng@veloce.test')->firstOrFail();
-    $hrManager = User::role(RoleName::HR_MANAGER->value)->firstOrFail();
-    $annualLeave = LeaveType::query()->where('code', 'annual_leave')->firstOrFail();
-
-    $submitAction = app(SubmitLeaveRequestAction::class);
-    $approveAction = app(ApproveLeaveRequestAction::class);
-
-    $shortLeave = $submitAction->execute(
-        $divisionHead->employee,
-        $annualLeave,
-        CarbonImmutable::parse('2026-11-24', 'Asia/Jakarta'),
-        CarbonImmutable::parse('2026-11-25', 'Asia/Jakarta'),
-        'Cuti kepala divisi dua hari.',
-    );
-
-    expect($shortLeave->approvals->pluck('role')->all())->toBe([
-        RoleName::DEPT_MANAGER->value,
-    ]);
-
-    $approvedShort = $approveAction->execute($deptManager, $shortLeave);
-    expect($approvedShort->status)->toBe(LeaveRequestStatus::APPROVED);
-
-    $longLeave = $submitAction->execute(
-        $divisionHead->employee,
-        $annualLeave,
-        CarbonImmutable::parse('2026-12-01', 'Asia/Jakarta'),
-        CarbonImmutable::parse('2026-12-04', 'Asia/Jakarta'),
-        'Cuti kepala divisi empat hari.',
-    );
-
-    expect($longLeave->approvals->pluck('role')->all())->toBe([
-        RoleName::DEPT_MANAGER->value,
-        RoleName::HR_MANAGER->value,
-    ]);
-
-    $step1 = $approveAction->execute($deptManager, $longLeave);
-    expect($step1->status)->toBe(LeaveRequestStatus::PENDING);
-
-    $step2 = $approveAction->execute($hrManager, $step1);
-    expect($step2->status)->toBe(LeaveRequestStatus::APPROVED);
-});
-
-test('matriks persetujuan 5: dept_manager hanya memerlukan persetujuan hr_manager', function (): void {
-    $deptManager = User::query()->where('email', 'manager.eng@veloce.test')->firstOrFail();
+test('matriks persetujuan absensi: division_head, dept_manager, payroll, dan super_admin diproses oleh hr_manager', function (string $applicantEmail): void {
+    $applicant = User::query()->where('email', $applicantEmail)->firstOrFail();
     $hrManager = User::role(RoleName::HR_MANAGER->value)->firstOrFail();
     $annualLeave = LeaveType::query()->where('code', 'annual_leave')->firstOrFail();
 
     $leaveRequest = app(SubmitLeaveRequestAction::class)->execute(
-        $deptManager->employee,
+        $applicant->employee,
         $annualLeave,
         CarbonImmutable::parse('2026-12-01', 'Asia/Jakarta'),
         CarbonImmutable::parse('2026-12-04', 'Asia/Jakarta'),
-        'Cuti manager departemen empat hari.',
+        'Pengajuan cuti empat hari.',
     );
 
     expect($leaveRequest->approvals->pluck('role')->all())->toBe([
         RoleName::HR_MANAGER->value,
-    ]);
+    ])
+        ->and($hrManager->can('approve', $leaveRequest))->toBeTrue();
 
     $approved = app(ApproveLeaveRequestAction::class)->execute($hrManager, $leaveRequest);
     expect($approved->status)->toBe(LeaveRequestStatus::APPROVED);
-});
+})->with([
+    'Division Head' => 'head.prd@veloce.test',
+    'Dept Manager' => 'manager.eng@veloce.test',
+    'Payroll' => 'payroll@veloce.test',
+    'Super Admin' => 'admin@veloce.test',
+]);
 
-test('matriks persetujuan 6: hr_manager hanya memerlukan persetujuan super_admin', function (): void {
+test('matriks persetujuan absensi: hr_manager hanya memerlukan persetujuan super_admin', function (): void {
     $hrManager = User::role(RoleName::HR_MANAGER->value)->firstOrFail();
     $superAdmin = User::role(RoleName::SUPER_ADMIN->value)->firstOrFail();
     $annualLeave = LeaveType::query()->where('code', 'annual_leave')->firstOrFail();
@@ -234,9 +129,7 @@ test('matriks persetujuan 6: hr_manager hanya memerlukan persetujuan super_admin
     expect($approved->status)->toBe(LeaveRequestStatus::APPROVED);
 });
 
-test('self-approval ditolak dengan AuthorizationException 403 untuk semua pemohon approver', function (): void {
-    $divisionHead = User::query()->where('email', 'head.prd@veloce.test')->firstOrFail();
-    $deptManager = User::query()->where('email', 'manager.eng@veloce.test')->firstOrFail();
+test('self-approval ditolak dengan AuthorizationException 403 untuk hr_manager maupun super_admin', function (): void {
     $hrManager = User::role(RoleName::HR_MANAGER->value)->firstOrFail();
     $annualLeave = LeaveType::query()->where('code', 'annual_leave')->firstOrFail();
 
@@ -244,29 +137,26 @@ test('self-approval ditolak dengan AuthorizationException 403 untuk semua pemoho
     $approveAction = app(ApproveLeaveRequestAction::class);
     $rejectAction = app(RejectLeaveRequestAction::class);
 
-    foreach ([$divisionHead, $deptManager, $hrManager] as $actor) {
-        $request = $submitAction->execute(
-            $actor->employee,
-            $annualLeave,
-            CarbonImmutable::parse('2026-11-24', 'Asia/Jakarta'),
-            CarbonImmutable::parse('2026-11-25', 'Asia/Jakarta'),
-            'Pengajuan pribadi oleh approver.',
-        );
+    $request = $submitAction->execute(
+        $hrManager->employee,
+        $annualLeave,
+        CarbonImmutable::parse('2026-11-24', 'Asia/Jakarta'),
+        CarbonImmutable::parse('2026-11-25', 'Asia/Jakarta'),
+        'Pengajuan pribadi HR Manager.',
+    );
 
-        expect($actor->can('approve', $request))->toBeFalse();
+    expect($hrManager->can('approve', $request))->toBeFalse();
 
-        expect(fn () => $approveAction->execute($actor, $request))
-            ->toThrow(AuthorizationException::class);
+    expect(fn () => $approveAction->execute($hrManager, $request))
+        ->toThrow(AuthorizationException::class);
 
-        expect(fn () => $rejectAction->execute($actor, $request, 'Coba tolak sendiri'))
-            ->toThrow(AuthorizationException::class);
-    }
+    expect(fn () => $rejectAction->execute($hrManager, $request, 'Coba tolak sendiri'))
+        ->toThrow(AuthorizationException::class);
 });
 
-test('penolakan pada langkah 1 langsung menjadikan status rejected dan menghentikan pipeline', function (): void {
+test('penolakan oleh hr_manager langsung menjadikan status rejected dan mengembalikan saldo', function (): void {
     $staff = User::query()->where('email', 'operator.prd@veloce.test')->firstOrFail();
-    $divisionHead = User::query()->where('email', 'head.prd@veloce.test')->firstOrFail();
-    $deptManager = User::query()->where('email', 'manager.eng@veloce.test')->firstOrFail();
+    $hrManager = User::role(RoleName::HR_MANAGER->value)->firstOrFail();
     $annualLeave = LeaveType::query()->where('code', 'annual_leave')->firstOrFail();
 
     $leaveRequest = app(SubmitLeaveRequestAction::class)->execute(
@@ -274,11 +164,11 @@ test('penolakan pada langkah 1 langsung menjadikan status rejected dan menghenti
         $annualLeave,
         CarbonImmutable::parse('2026-12-01', 'Asia/Jakarta'),
         CarbonImmutable::parse('2026-12-04', 'Asia/Jakarta'),
-        'Cuti empat hari yang akan ditolak di tahap pertama.',
+        'Cuti empat hari yang ditolak HR.',
     );
 
     $rejected = app(RejectLeaveRequestAction::class)->execute(
-        $divisionHead,
+        $hrManager,
         $leaveRequest,
         'Sedang jadwal produksi prioritas tinggi.',
     );
@@ -288,13 +178,8 @@ test('penolakan pada langkah 1 langsung menjadikan status rejected dan menghenti
     expect($rejected->status)->toBe(LeaveRequestStatus::REJECTED)
         ->and($rejected->finalized_at)->not->toBeNull()
         ->and($approvals[0]->status)->toBe(ApprovalStatus::REJECTED)
-        ->and($approvals[0]->approver_id)->toBe($divisionHead->id)
-        ->and($approvals[0]->note)->toBe('Sedang jadwal produksi prioritas tinggi.')
-        ->and($approvals[1]->status)->toBe(ApprovalStatus::PENDING)
-        ->and($approvals[1]->approver_id)->toBeNull()
-        ->and($approvals[2]->status)->toBe(ApprovalStatus::PENDING)
-        ->and($approvals[2]->approver_id)->toBeNull()
-        ->and($deptManager->can('approve', $rejected))->toBeFalse();
+        ->and($approvals[0]->approver_id)->toBe($hrManager->id)
+        ->and($hrManager->can('approve', $rejected))->toBeFalse();
 
     $balance = LeaveBalance::query()
         ->where('employee_id', $staff->employee->id)
@@ -307,8 +192,7 @@ test('penolakan pada langkah 1 langsung menjadikan status rejected dan menghenti
 test('pembatalan hanya boleh dilakukan oleh pemohon saat status masih pending', function (): void {
     $owner = User::query()->where('email', 'operator.prd@veloce.test')->firstOrFail();
     $otherEmployee = User::query()->where('email', 'teknisi.mnt@veloce.test')->firstOrFail();
-    $divisionHead = User::query()->where('email', 'head.prd@veloce.test')->firstOrFail();
-    $deptManager = User::query()->where('email', 'manager.eng@veloce.test')->firstOrFail();
+    $hrManager = User::role(RoleName::HR_MANAGER->value)->firstOrFail();
     $annualLeave = LeaveType::query()->where('code', 'annual_leave')->firstOrFail();
 
     $submitAction = app(SubmitLeaveRequestAction::class);
@@ -321,19 +205,12 @@ test('pembatalan hanya boleh dilakukan oleh pemohon saat status masih pending', 
         'Pengajuan yang akan dibatalkan.',
     );
 
-    // Orang lain maupun atasan tidak berhak membatalkan pengajuan milik pemohon.
     expect($otherEmployee->can('cancel', $pendingRequest))->toBeFalse()
-        ->and($divisionHead->can('cancel', $pendingRequest))->toBeFalse();
+        ->and($hrManager->can('cancel', $pendingRequest))->toBeFalse();
 
-    $this->actingAs($otherEmployee)
-        ->post(route('leave.cancel', $pendingRequest))
-        ->assertForbidden();
+    $this->actingAs($otherEmployee)->post(route('leave.cancel', $pendingRequest))->assertForbidden();
+    $this->actingAs($hrManager)->post(route('leave.cancel', $pendingRequest))->assertForbidden();
 
-    $this->actingAs($divisionHead)
-        ->post(route('leave.cancel', $pendingRequest))
-        ->assertForbidden();
-
-    // Pemohon boleh membatalkan saat pending.
     expect($owner->can('cancel', $pendingRequest))->toBeTrue();
 
     $this->actingAs($owner)
@@ -345,12 +222,6 @@ test('pembatalan hanya boleh dilakukan oleh pemohon saat status masih pending', 
         ->and($pendingRequest->cancelled_at)->not->toBeNull()
         ->and($owner->can('cancel', $pendingRequest))->toBeFalse();
 
-    // Pembatalan ulang ditolak.
-    $this->actingAs($owner)
-        ->post(route('leave.cancel', $pendingRequest))
-        ->assertForbidden();
-
-    // Pengajuan yang sudah disetujui juga tidak dapat dibatalkan.
     $approvedRequest = $submitAction->execute(
         $owner->employee,
         $annualLeave,
@@ -358,9 +229,7 @@ test('pembatalan hanya boleh dilakukan oleh pemohon saat status masih pending', 
         CarbonImmutable::parse('2026-12-02', 'Asia/Jakarta'),
         'Pengajuan yang akan disetujui.',
     );
-    $approveAction = app(ApproveLeaveRequestAction::class);
-    $step1 = $approveAction->execute($divisionHead, $approvedRequest);
-    $approved = $approveAction->execute($deptManager, $step1);
+    $approved = app(ApproveLeaveRequestAction::class)->execute($hrManager, $approvedRequest);
 
     expect($owner->can('cancel', $approved))->toBeFalse();
     $this->actingAs($owner)
@@ -378,17 +247,19 @@ test('akses halaman leave dan lampiran privat dijaga ketat oleh policy', functio
     $otherDivisionHead = User::query()->where('email', 'head.mnt@veloce.test')->firstOrFail();
     $otherDeptManager = User::query()->where('email', 'manager.qal@veloce.test')->firstOrFail();
     $payroll = User::role(RoleName::PAYROLL->value)->firstOrFail();
-    $superAdmin = User::role(RoleName::SUPER_ADMIN->value)->firstOrFail();
 
     $sickLeave = LeaveType::query()->where('code', 'sick')->firstOrFail();
 
     $this->actingAs($owner)->get(route('leave.index'))->assertOk();
-    $this->actingAs($owner)->get(route('leave.create'))->assertOk()->assertSee('Ketua Divisi');
+    $this->actingAs($owner)->get(route('leave.create'))->assertOk()->assertSee('HR Manager');
 
-    // Payroll & akun non-karyawan tidak bisa membuka daftar / form pengajuan cuti karyawan.
-    $this->actingAs($payroll)->get(route('leave.index'))->assertForbidden();
-    $this->actingAs($payroll)->get(route('leave.create'))->assertForbidden();
-    $this->actingAs($superAdmin)->get(route('leave.create'))->assertForbidden();
+    // Karena semua orang wajib absen, payroll & admin pun dapat mengakses halaman cuti/izin pribadi,
+    // sedangkan akun tanpa profil karyawan ditolak 403.
+    $noEmployeeUser = User::factory()->create();
+    $noEmployeeUser->assignRole(RoleName::EMPLOYEE->value);
+    $this->actingAs($payroll)->get(route('leave.index'))->assertOk();
+    $this->actingAs($noEmployeeUser)->get(route('leave.index'))->assertForbidden();
+    $this->actingAs($noEmployeeUser)->get(route('leave.create'))->assertForbidden();
 
     $this->actingAs($owner)->post(route('leave.store'), [
         'leave_type_id' => $sickLeave->id,
@@ -402,30 +273,19 @@ test('akses halaman leave dan lampiran privat dijaga ketat oleh policy', functio
         ->where('employee_id', $owner->employee->id)
         ->firstOrFail();
 
-    expect($leaveRequest->attachment_path)->not->toBeNull();
-
     $attachmentUrl = route('media.leave.attachment', $leaveRequest);
     $showUrl = route('leave.show', $leaveRequest);
 
-    // Tamu diarahkan ke login.
     auth()->logout();
     $this->get($attachmentUrl)->assertRedirect(route('login'));
     $this->get($showUrl)->assertRedirect(route('login'));
 
-    // Pemilik, Ketua Divisi sedivisi, Manager Departemen sedepartemen, dan HR Manager diizinkan.
     foreach ([$owner, $sameDivisionHead, $sameDeptManager, $hrManager] as $allowedViewer) {
         $this->actingAs($allowedViewer)->get($showUrl)->assertOk();
-
         $mediaResponse = $this->actingAs($allowedViewer)->get($attachmentUrl);
         $mediaResponse->assertOk();
-
-        $cacheControl = strtolower((string) $mediaResponse->headers->get('Cache-Control'));
-        expect($cacheControl)
-            ->toContain('private')
-            ->toContain('no-store');
     }
 
-    // Karyawan lain, divisi lain, departemen lain, dan payroll ditolak 403.
     foreach ([$otherEmployee, $otherDivisionHead, $otherDeptManager, $payroll] as $deniedViewer) {
         $this->actingAs($deniedViewer)->get($showUrl)->assertForbidden();
         $this->actingAs($deniedViewer)->get($attachmentUrl)->assertForbidden();

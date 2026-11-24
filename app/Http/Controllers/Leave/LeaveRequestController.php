@@ -118,8 +118,7 @@ class LeaveRequestController extends Controller
             : [];
 
         $holidayDates = Holiday::query()
-            ->whereYear('date', '>=', $currentYear)
-            ->whereYear('date', '<=', $currentYear + 1)
+            ->whereBetween('date', ["{$currentYear}-01-01", ($currentYear + 1).'-12-31'])
             ->orderBy('date')
             ->get(['date'])
             ->map(static fn (Holiday $holiday): string => $holiday->date->toDateString())

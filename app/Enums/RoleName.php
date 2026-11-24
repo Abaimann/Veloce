@@ -21,10 +21,16 @@ enum RoleName: string
     public function isApprover(): bool
     {
         return in_array($this, [
-            self::DIVISION_HEAD,
-            self::DEPT_MANAGER,
             self::HR_MANAGER,
             self::SUPER_ADMIN,
+        ], true);
+    }
+
+    public function isWorkApprover(): bool
+    {
+        return in_array($this, [
+            self::DIVISION_HEAD,
+            self::DEPT_MANAGER,
         ], true);
     }
 

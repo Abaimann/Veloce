@@ -6,6 +6,7 @@ use App\Actions\Leave\ApproveLeaveRequestAction;
 use App\Actions\Leave\SubmitLeaveRequestAction;
 use App\Enums\AttendanceStatus;
 use App\Enums\LeaveRequestStatus;
+use App\Enums\RoleName;
 use App\Models\Attendance;
 use App\Models\LeaveBalance;
 use App\Models\LeaveType;
@@ -29,8 +30,7 @@ afterEach(function (): void {
 
 test('pengurangan saldo cuti tahunan tepat sesuai hari kerja efektif melewati akhir pekan dan hari libur nasional', function (): void {
     $staff = User::query()->where('email', 'operator.prd@veloce.test')->firstOrFail();
-    $divisionHead = User::query()->where('email', 'head.prd@veloce.test')->firstOrFail();
-    $deptManager = User::query()->where('email', 'manager.eng@veloce.test')->firstOrFail();
+    $hrManager = User::role(RoleName::HR_MANAGER->value)->firstOrFail();
     $annualLeave = LeaveType::query()->where('code', 'annual_leave')->firstOrFail();
 
     $submitAction = app(SubmitLeaveRequestAction::class);
@@ -54,8 +54,7 @@ test('pengurangan saldo cuti tahunan tepat sesuai hari kerja efektif melewati ak
         ->firstOrFail();
     expect($balanceBeforeFinal->used_days)->toBe(0);
 
-    $step1 = $approveAction->execute($divisionHead, $augustLeave);
-    $approveAction->execute($deptManager, $step1);
+    $approveAction->execute($hrManager, $augustLeave);
 
     $balanceAfterAugust = $balanceBeforeFinal->fresh();
     expect($balanceAfterAugust->entitled_days)->toBe(12)
@@ -74,8 +73,7 @@ test('pengurangan saldo cuti tahunan tepat sesuai hari kerja efektif melewati ak
 
     expect($decemberLeave->total_work_days)->toBe(2);
 
-    $step1Dec = $approveAction->execute($divisionHead, $decemberLeave);
-    $approveAction->execute($deptManager, $step1Dec);
+    $approveAction->execute($hrManager, $decemberLeave);
 
     $balanceAfterDecember = $balanceAfterAugust->fresh();
     expect($balanceAfterDecember->used_days)->toBe(4)
@@ -183,8 +181,7 @@ test('pengajuan cuti tahunan ditolak bila saldo tidak cukup dan anak magang bole
 
 test('simulasi race double-approve pada step terakhir gagal di percobaan kedua dengan ValidationException dan saldo tidak pernah negatif', function (): void {
     $staff = User::query()->where('email', 'operator.prd@veloce.test')->firstOrFail();
-    $divisionHead = User::query()->where('email', 'head.prd@veloce.test')->firstOrFail();
-    $deptManager = User::query()->where('email', 'manager.eng@veloce.test')->firstOrFail();
+    $hrManager = User::role(RoleName::HR_MANAGER->value)->firstOrFail();
     $annualLeave = LeaveType::query()->where('code', 'annual_leave')->firstOrFail();
 
     // Set kuota tersisa tepat 2 hari agar percobaan potong ganda langsung terlihat jika gagal menjaga konsistensi.
@@ -205,14 +202,13 @@ test('simulasi race double-approve pada step terakhir gagal di percobaan kedua d
     );
 
     $approveAction = app(ApproveLeaveRequestAction::class);
-    $afterStep1 = $approveAction->execute($divisionHead, $leaveRequest);
 
     // Panggilan final step pertama sukses.
-    $final = $approveAction->execute($deptManager, $afterStep1);
+    $final = $approveAction->execute($hrManager, $leaveRequest);
     expect($final->status)->toBe(LeaveRequestStatus::APPROVED);
 
-    // Panggilan kedua berturut-turut untuk step terakhir (baik dengan state stale maupun fresh) gagal dengan ValidationException.
-    expect(fn () => $approveAction->execute($deptManager, $afterStep1))
+    // Panggilan kedua berturut-turut untuk step terakhir gagal dengan ValidationException.
+    expect(fn () => $approveAction->execute($hrManager, $leaveRequest))
         ->toThrow(ValidationException::class);
 
     $balance = LeaveBalance::query()
@@ -226,7 +222,7 @@ test('simulasi race double-approve pada step terakhir gagal di percobaan kedua d
 
 test('final approval cuti, sakit, dan izin otomatis membuat baris attendances di hari kerja serta memblokir selfie check-in', function (): void {
     $noDivStaff = User::query()->where('email', 'admin.eng@veloce.test')->firstOrFail();
-    $deptManager = User::query()->where('email', 'manager.eng@veloce.test')->firstOrFail();
+    $hrManager = User::role(RoleName::HR_MANAGER->value)->firstOrFail();
     $office = OfficeLocation::query()->active()->firstOrFail();
 
     $annualLeave = LeaveType::query()->where('code', 'annual_leave')->firstOrFail();
@@ -244,7 +240,7 @@ test('final approval cuti, sakit, dan izin otomatis membuat baris attendances di
         CarbonImmutable::parse('2026-08-18', 'Asia/Jakarta'),
         'Cuti tahunan untuk sinkronisasi absensi.',
     );
-    $approveAction->execute($deptManager, $leaveReq);
+    $approveAction->execute($hrManager, $leaveReq);
 
     $leaveAttendances = Attendance::query()
         ->where('employee_id', $noDivStaff->employee->id)
@@ -266,7 +262,7 @@ test('final approval cuti, sakit, dan izin otomatis membuat baris attendances di
         'Sakit demam.',
         UploadedFile::fake()->image('dokter.jpg', 500, 700),
     );
-    $approveAction->execute($deptManager, $sickReq);
+    $approveAction->execute($hrManager, $sickReq);
 
     $sickAttendance = Attendance::query()
         ->where('employee_id', $noDivStaff->employee->id)
@@ -284,7 +280,7 @@ test('final approval cuti, sakit, dan izin otomatis membuat baris attendances di
         CarbonImmutable::parse('2026-11-25', 'Asia/Jakarta'),
         'Izin mengurus dokumen kependudukan.',
     );
-    $approveAction->execute($deptManager, $permReq);
+    $approveAction->execute($hrManager, $permReq);
 
     $permAttendance = Attendance::query()
         ->where('employee_id', $noDivStaff->employee->id)
@@ -312,8 +308,7 @@ test('final approval cuti, sakit, dan izin otomatis membuat baris attendances di
 
 test('pengajuan wfh yang disetujui mengizinkan check-in dan check-out dari luar kantor dengan status wfh', function (): void {
     $staff = User::query()->where('email', 'operator.prd@veloce.test')->firstOrFail();
-    $divisionHead = User::query()->where('email', 'head.prd@veloce.test')->firstOrFail();
-    $deptManager = User::query()->where('email', 'manager.eng@veloce.test')->firstOrFail();
+    $hrManager = User::role(RoleName::HR_MANAGER->value)->firstOrFail();
     $office = OfficeLocation::query()->active()->firstOrFail();
     $wfhLeave = LeaveType::query()->where('code', 'wfh')->firstOrFail();
 
@@ -326,8 +321,7 @@ test('pengajuan wfh yang disetujui mengizinkan check-in dan check-out dari luar 
     );
 
     $approveAction = app(ApproveLeaveRequestAction::class);
-    $step1 = $approveAction->execute($divisionHead, $wfhRequest);
-    $approvedWfh = $approveAction->execute($deptManager, $step1);
+    $approvedWfh = $approveAction->execute($hrManager, $wfhRequest);
 
     expect($approvedWfh->status)->toBe(LeaveRequestStatus::APPROVED)
         ->and(Attendance::query()

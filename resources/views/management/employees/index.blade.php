@@ -7,6 +7,30 @@
         \App\Enums\EmploymentType::INTERN => 'info',
         \App\Enums\EmploymentType::STAFF => 'neutral',
     };
+
+    $departmentOptions = $departments->mapWithKeys(
+        static fn ($department): array => [$department->id => "{$department->name} ({$department->code})"]
+    )->all();
+
+    $divisionJson = $divisions->map(static fn ($division): array => [
+        'id' => (string) $division->id,
+        'department_id' => (string) $division->department_id,
+        'label' => "{$division->name} ({$division->code})",
+    ])->values()->all();
+
+    $roleOptions = collect($filterableRoles)->mapWithKeys(
+        static fn (\App\Enums\RoleName $role): array => [$role->value => $role->label()]
+    )->all();
+
+    $employmentTypeOptions = collect($employmentTypes)->mapWithKeys(
+        static fn (\App\Enums\EmploymentType $type): array => [$type->value => $type->label()]
+    )->all();
+
+    $statusOptions = [
+        'active' => 'Aktif',
+        'pending_activation' => 'Menunggu Aktivasi',
+        'inactive' => 'Nonaktif',
+    ];
 @endphp
 
 <x-app-layout title="Manajemen Karyawan" subtitle="Kelola akun karyawan dan tautan undangan aktivasi">
@@ -16,7 +40,11 @@
             <div>
                 <h2 class="text-base font-bold text-brand-ink sm:text-lg">Daftar Karyawan</h2>
                 <p class="text-xs text-muted">
-                    Total {{ $employees->total() }} karyawan sesuai cakupan akses Anda.
+                    @if ($hasActiveFilters)
+                        Ditemukan {{ $employees->total() }} karyawan sesuai filter pencarian Anda.
+                    @else
+                        Total {{ $employees->total() }} karyawan sesuai cakupan akses Anda.
+                    @endif
                 </p>
             </div>
 
@@ -29,6 +57,138 @@
                 </x-button>
             @endif
         </div>
+
+        {{-- Pencarian & Filter Karyawan --}}
+        <x-card>
+            <form
+                method="GET"
+                action="{{ route('management.employees.index') }}"
+                x-data="{
+                    departmentId: @js($selectedDepartmentId !== null ? (string) $selectedDepartmentId : ''),
+                    divisionId: @js($selectedDivisionFilter !== null ? (string) $selectedDivisionFilter : ''),
+                    allDivisions: @js($divisionJson),
+                    get filteredDivisions() {
+                        if (!this.departmentId) return this.allDivisions;
+                        return this.allDivisions.filter(d => d.department_id === this.departmentId);
+                    },
+                    onDepartmentChange() {
+                        if (this.divisionId && this.divisionId !== 'none') {
+                            const stillValid = this.filteredDivisions.some(d => d.id === this.divisionId);
+                            if (!stillValid) this.divisionId = '';
+                        }
+                    }
+                }"
+                class="space-y-4"
+            >
+                <div class="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+                    {{-- Input Cari --}}
+                    <div class="sm:col-span-2 {{ $canFilterDepartment ? 'xl:col-span-2' : ($canFilterDivision ? 'xl:col-span-2' : 'xl:col-span-3') }}">
+                        <x-input
+                            id="search-employee"
+                            name="q"
+                            type="search"
+                            label="Cari Karyawan"
+                            :value="$search"
+                            placeholder="Nama, NIK, email, atau jabatan..."
+                        >
+                            <x-slot:leading>
+                                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="11" cy="11" r="7" />
+                                    <path stroke-linecap="round" d="M20 20l-3.5-3.5" />
+                                </svg>
+                            </x-slot:leading>
+                        </x-input>
+                    </div>
+
+                    {{-- Filter Departemen (Super Admin & HR Manager) --}}
+                    @if ($canFilterDepartment)
+                        <x-select
+                            id="filter-employee-department"
+                            name="department_id"
+                            label="Departemen"
+                            :options="$departmentOptions"
+                            :value="$selectedDepartmentId"
+                            placeholder="Semua Departemen"
+                            x-model="departmentId"
+                            x-on:change="onDepartmentChange()"
+                        />
+                    @endif
+
+                    {{-- Filter Divisi (Super Admin, HR Manager & Dept Manager) --}}
+                    @if ($canFilterDivision)
+                        <div class="space-y-1.5">
+                            <label for="filter-employee-division" class="block text-sm font-semibold text-text">
+                                Divisi
+                            </label>
+                            <select
+                                id="filter-employee-division"
+                                name="division_id"
+                                x-model="divisionId"
+                                class="block w-full min-h-12 rounded-2xl border border-border bg-card px-4 py-3 text-sm text-text shadow-xs transition-[border-color,box-shadow] duration-150 hover:border-muted/50 focus:border-brand-navy focus:outline-none focus:ring-4 focus:ring-brand-navy/10"
+                            >
+                                <option value="">Semua Divisi</option>
+                                <option value="none" @selected($selectedDivisionFilter === 'none')>Tanpa Divisi</option>
+                                <template x-for="division in filteredDivisions" :key="division.id">
+                                    <option
+                                        :value="division.id"
+                                        :selected="divisionId === division.id"
+                                        x-text="division.label"
+                                    ></option>
+                                </template>
+                            </select>
+                        </div>
+                    @endif
+
+                    {{-- Filter Peran --}}
+                    <x-select
+                        id="filter-employee-role"
+                        name="role"
+                        label="Peran"
+                        :options="$roleOptions"
+                        :value="$selectedRole?->value"
+                        placeholder="Semua Peran"
+                    />
+
+                    {{-- Filter Tipe Karyawan --}}
+                    <x-select
+                        id="filter-employee-type"
+                        name="employment_type"
+                        label="Tipe Karyawan"
+                        :options="$employmentTypeOptions"
+                        :value="$selectedEmploymentType?->value"
+                        placeholder="Semua Tipe"
+                    />
+
+                    {{-- Filter Status Akun --}}
+                    <x-select
+                        id="filter-employee-status"
+                        name="status"
+                        label="Status Akun"
+                        :options="$statusOptions"
+                        :value="$selectedStatus"
+                        placeholder="Semua Status"
+                    />
+                </div>
+
+                <div class="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
+                    <p class="text-xs text-muted">
+                        Menampilkan <strong class="font-semibold text-brand-ink">{{ $employees->count() }}</strong> dari <strong class="font-semibold text-brand-ink">{{ $employees->total() }}</strong> karyawan.
+                    </p>
+
+                    <div class="flex flex-wrap items-center gap-2">
+                        @if ($hasActiveFilters)
+                            <x-button href="{{ route('management.employees.index') }}" variant="secondary" size="sm">
+                                Reset Filter
+                            </x-button>
+                        @endif
+
+                        <x-button type="submit" variant="primary" size="sm">
+                            Terapkan Filter
+                        </x-button>
+                    </div>
+                </div>
+            </form>
+        </x-card>
 
         {{-- Banner Tautan Undangan Aktivasi Sekali Pakai --}}
         @if (session('invitation_url'))
@@ -107,10 +267,16 @@
 
         @if ($employees->isEmpty())
             <x-empty-state
-                title="Belum ada data karyawan"
-                description="Belum ada karyawan yang tercatat dalam cakupan akses Anda."
+                :title="$hasActiveFilters ? 'Tidak ada karyawan yang cocok' : 'Belum ada data karyawan'"
+                :description="$hasActiveFilters ? 'Coba ubah kata kunci pencarian atau reset filter untuk melihat seluruh karyawan.' : 'Belum ada karyawan yang tercatat dalam cakupan akses Anda.'"
             >
-                @if ($canCreateEmployee)
+                @if ($hasActiveFilters)
+                    <x-slot:action>
+                        <x-button href="{{ route('management.employees.index') }}" variant="secondary" size="sm">
+                            Reset Filter
+                        </x-button>
+                    </x-slot:action>
+                @elseif ($canCreateEmployee)
                     <x-slot:action>
                         <x-button href="{{ route('management.employees.create') }}" variant="checkin" size="sm">
                             Tambah Karyawan Pertama
@@ -126,6 +292,8 @@
                         $account = $employee->user;
                         $isActivated = $account?->hasActivatedPassword() ?? false;
                         $role = $account?->primaryRole();
+                        $contract = $employee->contractSummary();
+                        $canEditEmployee = $user?->can('update', $employee) ?? false;
                         $canReinvite = ! $isActivated
                             && $canCreateEmployee
                             && ($user?->can('regenerateInvitation', $employee) ?? false);
@@ -178,16 +346,31 @@
                                 <dt class="text-muted">Jadwal Kerja</dt>
                                 <dd class="mt-0.5 font-semibold text-text">{{ $employee->workSchedule?->name ?? '-' }}</dd>
                             </div>
+                            <div class="col-span-2">
+                                <dt class="text-muted">Masa Kontrak</dt>
+                                <dd class="mt-1 flex flex-wrap items-center gap-2">
+                                    <x-badge :variant="$contract['variant']">{{ $contract['label'] }}</x-badge>
+                                    <span class="font-medium text-text">{{ $contract['period_text'] }}</span>
+                                </dd>
+                            </div>
                         </dl>
 
-                        @if ($canReinvite)
-                            <form method="POST" action="{{ route('management.employees.reinvite', $employee) }}">
-                                @csrf
-                                <x-button type="submit" variant="secondary" size="sm" fullWidth>
-                                    Undang Ulang
+                        <div class="flex flex-wrap gap-2">
+                            @if ($canEditEmployee)
+                                <x-button href="{{ route('management.employees.edit', $employee) }}" variant="secondary" size="sm" class="flex-1">
+                                    Ubah Data &amp; Kontrak
                                 </x-button>
-                            </form>
-                        @endif
+                            @endif
+
+                            @if ($canReinvite)
+                                <form method="POST" action="{{ route('management.employees.reinvite', $employee) }}" class="flex-1">
+                                    @csrf
+                                    <x-button type="submit" variant="secondary" size="sm" fullWidth>
+                                        Undang Ulang
+                                    </x-button>
+                                </form>
+                            @endif
+                        </div>
                     </x-card>
                 @endforeach
             </div>
@@ -201,6 +384,7 @@
                                 <th scope="col" class="px-5 py-3.5">Karyawan</th>
                                 <th scope="col" class="px-5 py-3.5">Unit &amp; Jabatan</th>
                                 <th scope="col" class="px-5 py-3.5">Peran &amp; Tipe</th>
+                                <th scope="col" class="px-5 py-3.5">Masa Kontrak</th>
                                 <th scope="col" class="px-5 py-3.5">Jadwal Kerja</th>
                                 <th scope="col" class="px-5 py-3.5">Status Akun</th>
                                 <th scope="col" class="px-5 py-3.5 text-right">Aksi</th>
@@ -212,6 +396,8 @@
                                     $account = $employee->user;
                                     $isActivated = $account?->hasActivatedPassword() ?? false;
                                     $role = $account?->primaryRole();
+                                    $contract = $employee->contractSummary();
+                                    $canEditEmployee = $user?->can('update', $employee) ?? false;
                                     $canReinvite = ! $isActivated
                                         && $canCreateEmployee
                                         && ($user?->can('regenerateInvitation', $employee) ?? false);
@@ -243,6 +429,10 @@
                                         </div>
                                     </td>
                                     <td class="px-5 py-4 align-top">
+                                        <x-badge :variant="$contract['variant']">{{ $contract['label'] }}</x-badge>
+                                        <p class="mt-1 text-xs text-muted">{{ $contract['period_text'] }}</p>
+                                    </td>
+                                    <td class="px-5 py-4 align-top">
                                         <p class="font-medium text-text">{{ $employee->workSchedule?->name ?? '-' }}</p>
                                         @if ($employee->workSchedule)
                                             <p class="mt-0.5 text-xs text-muted">
@@ -266,16 +456,26 @@
                                         </div>
                                     </td>
                                     <td class="px-5 py-4 text-right align-top">
-                                        @if ($canReinvite)
-                                            <form method="POST" action="{{ route('management.employees.reinvite', $employee) }}" class="inline-block">
-                                                @csrf
-                                                <x-button type="submit" variant="secondary" size="sm">
-                                                    Undang Ulang
+                                        <div class="inline-flex flex-wrap items-center justify-end gap-1.5">
+                                            @if ($canEditEmployee)
+                                                <x-button href="{{ route('management.employees.edit', $employee) }}" variant="ghost" size="sm">
+                                                    Ubah
                                                 </x-button>
-                                            </form>
-                                        @else
-                                            <span class="text-xs text-muted">-</span>
-                                        @endif
+                                            @endif
+
+                                            @if ($canReinvite)
+                                                <form method="POST" action="{{ route('management.employees.reinvite', $employee) }}" class="inline-block">
+                                                    @csrf
+                                                    <x-button type="submit" variant="secondary" size="sm">
+                                                        Undang Ulang
+                                                    </x-button>
+                                                </form>
+                                            @endif
+
+                                            @if (! $canEditEmployee && ! $canReinvite)
+                                                <span class="text-xs text-muted">-</span>
+                                            @endif
+                                        </div>
                                     </td>
                                 </tr>
                             @endforeach

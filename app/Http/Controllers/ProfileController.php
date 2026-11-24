@@ -10,7 +10,6 @@ use App\Models\LeaveRequest;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\View\View;
 
 class ProfileController extends Controller
@@ -42,9 +41,7 @@ class ProfileController extends Controller
             ? LeaveRequest::pendingForApprover($user)->count()
             : 0;
 
-        $unreadNotificationsCount = Schema::hasTable('notifications')
-            ? $user->unreadNotifications()->count()
-            : 0;
+        $unreadNotificationsCount = $user->unreadNotifications()->count();
 
         return view('profile.show', [
             'user' => $user,

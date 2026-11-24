@@ -53,6 +53,10 @@ class StoreEmployeeRequest extends FormRequest
             'employment_type' => ['required', 'string', Rule::enum(EmploymentType::class)],
             'position_title' => ['nullable', 'string', 'max:255'],
             'join_date' => ['required', 'date'],
+            'contract_start_date' => ['nullable', 'date'],
+            'contract_end_date' => ['nullable', 'date', 'after_or_equal:contract_start_date'],
+            'base_salary' => ['nullable', 'integer', 'min:0'],
+            'fixed_allowance' => ['nullable', 'integer', 'min:0'],
             'role' => ['required', 'string', Rule::enum(RoleName::class)],
         ];
     }

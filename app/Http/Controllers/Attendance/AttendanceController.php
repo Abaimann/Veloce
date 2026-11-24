@@ -8,19 +8,18 @@ use App\Actions\Attendance\CheckInAction;
 use App\Actions\Attendance\CheckOutAction;
 use App\Enums\AttendanceStatus;
 use App\Enums\LeaveRequestStatus;
-use App\Enums\RoleName;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Attendance\RecordAttendanceRequest;
 use App\Models\Attendance;
 use App\Models\Employee;
 use App\Models\Holiday;
+use App\Models\LeaveRequest;
 use App\Models\OfficeLocation;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\View\View;
 
 class AttendanceController extends Controller
@@ -189,8 +188,10 @@ class AttendanceController extends Controller
         $attendances = Attendance::query()
             ->with('officeLocation')
             ->where('employee_id', $employee->id)
-            ->whereYear('work_date', $selectedMonthDate->year)
-            ->whereMonth('work_date', $selectedMonthDate->month)
+            ->whereBetween('work_date', [
+                $selectedMonthDate->startOfMonth()->toDateString(),
+                $selectedMonthDate->endOfMonth()->toDateString(),
+            ])
             ->orderByDesc('work_date')
             ->get();
 
@@ -221,7 +222,7 @@ class AttendanceController extends Controller
         $user = $request->user();
         $employee = $user?->employee;
 
-        if ($user === null || $employee === null || $user->hasRole(RoleName::PAYROLL->value)) {
+        if ($user === null || $employee === null) {
             abort(403);
         }
 
@@ -234,43 +235,16 @@ class AttendanceController extends Controller
             return true;
         }
 
-        if (! Schema::hasTable('leave_requests')) {
-            return false;
-        }
-
-        $baseQuery = DB::table('leave_requests')
-            ->where('leave_requests.employee_id', $employee->id)
-            ->where('leave_requests.status', LeaveRequestStatus::APPROVED->value)
-            ->whereDate('leave_requests.start_date', '<=', $today)
-            ->whereDate('leave_requests.end_date', '>=', $today);
-
-        if (Schema::hasColumn('leave_requests', 'deleted_at')) {
-            $baseQuery->whereNull('leave_requests.deleted_at');
-        }
-
-        if (Schema::hasColumn('leave_requests', 'type')) {
-            return $baseQuery->where('leave_requests.type', AttendanceStatus::WFH->value)->exists();
-        }
-
-        if (Schema::hasColumn('leave_requests', 'leave_type')) {
-            return $baseQuery->where('leave_requests.leave_type', AttendanceStatus::WFH->value)->exists();
-        }
-
-        if (! Schema::hasTable('leave_types') || ! Schema::hasColumn('leave_requests', 'leave_type_id')) {
-            return false;
-        }
-
-        $baseQuery->join('leave_types', 'leave_types.id', '=', 'leave_requests.leave_type_id');
-
-        if (Schema::hasColumn('leave_types', 'attendance_status')) {
-            return $baseQuery->where('leave_types.attendance_status', AttendanceStatus::WFH->value)->exists();
-        }
-
-        if (Schema::hasColumn('leave_types', 'code')) {
-            return $baseQuery->whereRaw('LOWER(leave_types.code) = ?', [AttendanceStatus::WFH->value])->exists();
-        }
-
-        return false;
+        return LeaveRequest::query()
+            ->where('employee_id', $employee->id)
+            ->where('status', LeaveRequestStatus::APPROVED->value)
+            ->whereDate('start_date', '<=', $today)
+            ->whereDate('end_date', '>=', $today)
+            ->whereHas('leaveType', static function (Builder $query): void {
+                $query->where('code', 'wfh')
+                    ->orWhere('attendance_status', AttendanceStatus::WFH->value);
+            })
+            ->exists();
     }
 
     private function isWorkday(Employee $employee, CarbonImmutable $dateWib): bool

@@ -249,7 +249,7 @@ test('absen pada hari sabtu, minggu, dan hari libur ditolak ketika allow_non_wor
     'Hari Libur Nasional 17 Agustus' => '2026-08-17 08:05:00',
 ]);
 
-test('role payroll dan akun tanpa profil karyawan ditolak 403 sedangkan karyawan dapat membuka halaman kamera dan riwayat', function (): void {
+test('semua peran dengan profil karyawan termasuk payroll dan admin dapat absen sedangkan akun tanpa profil karyawan ditolak 403', function (): void {
     $now = CarbonImmutable::parse('2026-11-24 08:05:00', 'Asia/Jakarta');
     Carbon::setTestNow($now);
     CarbonImmutable::setTestNow($now);
@@ -257,13 +257,15 @@ test('role payroll dan akun tanpa profil karyawan ditolak 403 sedangkan karyawan
     $payroll = User::role(RoleName::PAYROLL->value)->firstOrFail();
     $superAdmin = User::role(RoleName::SUPER_ADMIN->value)->firstOrFail();
     $employeeUser = User::query()->where('email', 'operator.prd@veloce.test')->firstOrFail();
+    $noEmployeeUser = User::factory()->create();
+    $noEmployeeUser->assignRole(RoleName::EMPLOYEE->value);
 
-    foreach ([$payroll, $superAdmin] as $restrictedUser) {
-        $this->actingAs($restrictedUser)->get(route('attendance.camera'))->assertForbidden();
-        $this->actingAs($restrictedUser)->get(route('attendance.history'))->assertForbidden();
-        $this->actingAs($restrictedUser)->postJson(route('attendance.check-in'), [])->assertForbidden();
+    foreach ([$payroll, $superAdmin, $employeeUser] as $attendee) {
+        $this->actingAs($attendee)->get(route('attendance.camera'))->assertOk();
+        $this->actingAs($attendee)->get(route('attendance.history'))->assertOk();
     }
 
-    $this->actingAs($employeeUser)->get(route('attendance.camera'))->assertOk();
-    $this->actingAs($employeeUser)->get(route('attendance.history'))->assertOk();
+    $this->actingAs($noEmployeeUser)->get(route('attendance.camera'))->assertForbidden();
+    $this->actingAs($noEmployeeUser)->get(route('attendance.history'))->assertForbidden();
+    $this->actingAs($noEmployeeUser)->postJson(route('attendance.check-in'), [])->assertForbidden();
 });

@@ -3,7 +3,7 @@
     'description' => null,
 ])
 
-<div {{ $attributes->merge(['class' => 'flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card px-6 py-10 text-center']) }}>
+<div {{ $attributes->merge(['class' => 'flex flex-col items-center justify-center rounded-3xl border border-dashed border-brand-navy/20 bg-card/85 px-6 py-11 text-center shadow-2xs']) }}>
     @isset($icon)
         <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-navy-soft text-brand-navy">
             {{ $icon }}

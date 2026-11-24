@@ -14,30 +14,67 @@
         <section
             x-data="serverClock({{ $nowWib->getTimestampMs() }})"
             aria-label="Ringkasan Waktu Server Super Admin"
-            class="relative isolate overflow-hidden rounded-3xl bg-gradient-to-br from-brand-navy to-brand-ink p-5 text-on-brand shadow-lg shadow-brand-ink/15 sm:p-6"
+            class="timeline-hero-blueprint rounded-3xl p-5 text-on-brand sm:p-7"
         >
-            <div class="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-brand-green/20 blur-3xl" aria-hidden="true"></div>
-            <div class="relative flex flex-wrap items-start justify-between gap-3">
+            <div class="relative z-10 flex flex-wrap items-start justify-between gap-3">
                 <div class="min-w-0">
-                    <p class="text-xs font-medium text-on-brand/80">Kontrol Organisasi &amp; Master Data</p>
-                    <h2 class="mt-0.5 truncate text-xl font-bold tracking-tight text-on-brand sm:text-2xl">{{ $user->name }}</h2>
-                    <p class="mt-0.5 text-xs text-on-brand/80">{{ __('ui.company_name') }}</p>
+                    <div class="mb-2 inline-flex items-center gap-2 rounded-full border border-on-brand/20 bg-on-brand/10 px-3 py-1 text-[11px] font-bold tracking-wider uppercase text-on-brand">
+                        <span class="timeline-beacon-dot h-2 w-2 rounded-full bg-brand-green"></span>
+                        Kontrol Organisasi &amp; Master Data
+                    </div>
+                    <h2 class="truncate text-2xl font-extrabold tracking-tight text-on-brand sm:text-3xl">{{ $user->name }}</h2>
+                    <p class="mt-0.5 text-xs font-medium text-on-brand/80 sm:text-sm">{{ __('ui.company_name') }}</p>
                 </div>
 
-                <span class="rounded-full bg-on-brand/15 px-3 py-1 text-[11px] font-semibold text-on-brand ring-1 ring-on-brand/15">
+                <span class="timeline-glass-tile rounded-full px-3.5 py-1.5 text-xs font-bold text-on-brand">
                     Super Admin
                 </span>
             </div>
 
-            <div class="relative mt-5 border-t border-on-brand/15 pt-4">
-                <p class="text-3xl font-bold tracking-tight text-on-brand tabular-nums sm:text-4xl" x-text="timeText">
-                    {{ $nowWib->format('H:i:s') }} WIB
-                </p>
-                <p class="mt-1 text-xs text-on-brand/80" x-text="dateText">
-                    {{ $nowWib->translatedFormat('l, d F Y') }}
-                </p>
+            <div class="relative z-10 mt-5 border-t border-on-brand/15 pt-5">
+                <div class="timeline-glass-tile inline-block rounded-2xl px-4 py-3.5">
+                    <p class="text-[11px] font-bold tracking-wider uppercase text-on-brand/70">Waktu Server WIB</p>
+                    <p class="mt-1 text-3xl font-extrabold tracking-tight text-on-brand tabular-nums sm:text-4xl" x-text="timeText">
+                        {{ $nowWib->format('H:i:s') }} WIB
+                    </p>
+                    <p class="mt-0.5 text-xs text-on-brand/80" x-text="dateText">
+                        {{ $nowWib->translatedFormat('l, d F Y') }}
+                    </p>
+                </div>
             </div>
         </section>
+
+        {{-- Presensi Pribadi Super Admin (Semua Orang Wajib Absen) --}}
+        @if ($employee !== null)
+            <x-card class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <p class="text-sm font-bold text-brand-ink">Presensi Harian Anda</p>
+                    <p class="mt-0.5 text-xs text-muted">
+                        @if ($todayAttendance === null)
+                            Anda belum melakukan absen masuk hari ini.
+                        @elseif ($todayAttendance->check_out_at === null)
+                            Masuk pukul {{ $todayAttendance->check_in_at?->setTimezone('Asia/Jakarta')->format('H:i') }} WIB — jangan lupa absen pulang.
+                        @else
+                            Absen lengkap ({{ $todayAttendance->check_in_at?->setTimezone('Asia/Jakarta')->format('H:i') }} – {{ $todayAttendance->check_out_at?->setTimezone('Asia/Jakarta')->format('H:i') }} WIB).
+                        @endif
+                    </p>
+                </div>
+
+                @if ($todayAttendance === null)
+                    <x-button href="{{ route('attendance.camera') }}" variant="checkin" size="sm">
+                        Absen Masuk
+                    </x-button>
+                @elseif ($todayAttendance->check_out_at === null && ! $todayAttendance->status->blocksSelfieCheckIn())
+                    <x-button href="{{ route('attendance.camera') }}" variant="primary" size="sm">
+                        Absen Pulang
+                    </x-button>
+                @else
+                    <x-button href="{{ route('attendance.history') }}" variant="secondary" size="sm">
+                        Riwayat Absensi
+                    </x-button>
+                @endif
+            </x-card>
+        @endif
 
         {{-- Banner Persetujuan Pengajuan HR Manager --}}
         @if ($pendingHrApprovals > 0)
@@ -185,6 +222,47 @@
                         @endif
                         <x-button href="{{ $approvalsUrl }}" variant="secondary" size="sm" class="flex-1">
                             Persetujuan ({{ $pendingHrApprovals }})
+                        </x-button>
+                    </div>
+                </x-card>
+
+                <x-card class="flex flex-col justify-between gap-3">
+                    <div>
+                        <p class="text-sm font-bold text-brand-ink">Log Aktivitas CRUD</p>
+                        <p class="mt-0.5 text-xs leading-relaxed text-muted">
+                            Audit trail seluruh aksi tambah, ubah, dan hapus data di sistem.
+                        </p>
+                    </div>
+                    <x-button href="{{ route('management.activity-logs.index') }}" variant="secondary" size="sm" fullWidth>
+                        Buka Log Aktivitas
+                    </x-button>
+                </x-card>
+
+                <x-card class="flex flex-col justify-between gap-3">
+                    <div>
+                        <p class="text-sm font-bold text-brand-ink">Perhitungan Gaji Sistem</p>
+                        <p class="mt-0.5 text-xs leading-relaxed text-muted">
+                            Lihat rekap kalkulasi gaji pokok, tunjangan, dan potongan absensi bulanan.
+                        </p>
+                    </div>
+                    <x-button href="{{ route('payroll.index') }}" variant="secondary" size="sm" fullWidth>
+                        Buka Gaji Sistem
+                    </x-button>
+                </x-card>
+
+                <x-card class="flex flex-col justify-between gap-3">
+                    <div>
+                        <p class="text-sm font-bold text-brand-ink">Target, Kerjaan &amp; Timeline</p>
+                        <p class="mt-0.5 text-xs leading-relaxed text-muted">
+                            Pantau target departemen/divisi dan timeline kronologis harian karyawan.
+                        </p>
+                    </div>
+                    <div class="flex gap-2">
+                        <x-button href="{{ route('targets.index') }}" variant="secondary" size="sm" class="flex-1">
+                            Target Kerja
+                        </x-button>
+                        <x-button href="{{ route('timeline.index') }}" variant="secondary" size="sm" class="flex-1">
+                            Timeline
                         </x-button>
                     </div>
                 </x-card>

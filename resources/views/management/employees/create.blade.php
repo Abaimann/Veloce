@@ -222,6 +222,49 @@
                 </div>
             </x-card>
 
+            <x-card class="space-y-4">
+                <div>
+                    <h2 class="text-base font-bold text-brand-ink">Masa Kontrak &amp; Kompensasi</h2>
+                    <p class="mt-0.5 text-xs text-muted">Isi periode kontrak (kosongkan tanggal berakhir untuk karyawan tetap / PKWTT).</p>
+                </div>
+
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <x-input
+                        name="contract_start_date"
+                        type="date"
+                        label="Tanggal Mulai Kontrak"
+                        :value="now('Asia/Jakarta')->toDateString()"
+                    />
+
+                    <x-input
+                        name="contract_end_date"
+                        type="date"
+                        label="Tanggal Berakhir Kontrak (Opsional)"
+                        hint="Kosongkan bila berstatus karyawan tetap (PKWTT)."
+                    />
+
+                    @if (auth()->user()?->hasAnyRole([\App\Enums\RoleName::SUPER_ADMIN->value, \App\Enums\RoleName::HR_MANAGER->value]))
+                        <x-input
+                            name="base_salary"
+                            type="number"
+                            min="0"
+                            step="50000"
+                            label="Gaji Pokok Bulanan (Rp)"
+                            placeholder="Contoh: 7200000"
+                        />
+
+                        <x-input
+                            name="fixed_allowance"
+                            type="number"
+                            min="0"
+                            step="50000"
+                            label="Tunjangan Tetap Bulanan (Rp)"
+                            placeholder="Contoh: 1200000"
+                        />
+                    @endif
+                </div>
+            </x-card>
+
             <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                 <x-button href="{{ route('management.employees.index') }}" variant="secondary">
                     {{ __('ui.actions.cancel') }}

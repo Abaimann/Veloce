@@ -24,18 +24,30 @@ class WorkdayCalculator
             ->exists();
     }
 
-    public function countWorkdays(Employee $employee, CarbonInterface $start, CarbonInterface $end): int
-    {
-        return count($this->workdaysInRange($employee, $start, $end));
+    /**
+     * @param  array<string, true>|null  $preloadedHolidayDates
+     */
+    public function countWorkdays(
+        Employee $employee,
+        CarbonInterface $start,
+        CarbonInterface $end,
+        ?array $preloadedHolidayDates = null,
+    ): int {
+        return count($this->workdaysInRange($employee, $start, $end, $preloadedHolidayDates));
     }
 
     /**
      * Menghasilkan daftar tanggal hari kerja efektif dalam rentang [start, end] inklusif.
      *
+     * @param  array<string, true>|null  $preloadedHolidayDates
      * @return array<int, CarbonImmutable>
      */
-    public function workdaysInRange(Employee $employee, CarbonInterface $start, CarbonInterface $end): array
-    {
+    public function workdaysInRange(
+        Employee $employee,
+        CarbonInterface $start,
+        CarbonInterface $end,
+        ?array $preloadedHolidayDates = null,
+    ): array {
         $schedule = $employee->workSchedule;
 
         if ($schedule === null) {
@@ -49,14 +61,7 @@ class WorkdayCalculator
             return [];
         }
 
-        $holidayDates = Holiday::query()
-            ->whereDate('date', '>=', $startDay->toDateString())
-            ->whereDate('date', '<=', $endDay->toDateString())
-            ->get(['date'])
-            ->mapWithKeys(static fn (Holiday $holiday): array => [
-                $holiday->date->toDateString() => true,
-            ])
-            ->all();
+        $holidayDates = $preloadedHolidayDates ?? self::holidayLookupMap($startDay, $endDay);
 
         $workdays = [];
 
@@ -73,5 +78,22 @@ class WorkdayCalculator
         }
 
         return $workdays;
+    }
+
+    /**
+     * @return array<string, true>
+     */
+    public static function holidayLookupMap(CarbonInterface $start, CarbonInterface $end): array
+    {
+        $startDate = CarbonImmutable::instance($start)->toDateString();
+        $endDate = CarbonImmutable::instance($end)->toDateString();
+
+        return Holiday::query()
+            ->whereBetween('date', [$startDate, $endDate])
+            ->get(['date'])
+            ->mapWithKeys(static fn (Holiday $holiday): array => [
+                $holiday->date->toDateString() => true,
+            ])
+            ->all();
     }
 }

@@ -31,7 +31,7 @@
         @if ($required) required @endif
         @if ($hasError) aria-invalid="true" aria-describedby="{{ $selectId }}-error" @endif
         {{ $attributes->class([
-            'block w-full min-h-12 rounded-2xl border bg-card px-4 py-3 text-sm text-text shadow-xs transition-[border-color,box-shadow] duration-150 focus:outline-none focus:ring-4',
+            'veloce-field block w-full min-h-12 rounded-2xl border px-4 py-3 text-sm text-text shadow-2xs transition-[border-color,box-shadow,background-color] duration-150 focus:outline-none focus:ring-4',
             'border-danger focus:border-danger focus:ring-danger/15' => $hasError,
             'border-border hover:border-muted/50 focus:border-brand-navy focus:ring-brand-navy/10' => ! $hasError,
         ]) }}

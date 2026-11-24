@@ -10,12 +10,12 @@
     $baseClasses = 'inline-flex items-center justify-center gap-2 rounded-2xl font-semibold transition-[background-color,border-color,color,box-shadow,transform] duration-150 active:scale-[0.98] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 select-none';
 
     $variantClasses = match ($variant) {
-        'checkin' => 'bg-brand-green-strong text-on-brand hover:bg-brand-green shadow-sm shadow-brand-green-strong/20',
-        'secondary' => 'border border-brand-navy/25 text-brand-navy bg-card hover:bg-brand-navy-soft hover:border-brand-navy/50 shadow-xs',
+        'checkin' => 'veloce-btn-checkin',
+        'secondary' => 'veloce-btn-secondary',
         'danger' => 'bg-danger text-on-brand hover:opacity-90 shadow-sm shadow-danger/20',
         'danger-outline' => 'border border-danger/35 text-danger-ink bg-card hover:bg-danger-soft',
         'ghost' => 'text-brand-navy bg-transparent hover:bg-brand-navy-soft',
-        default => 'bg-brand-navy text-on-brand hover:bg-brand-ink shadow-sm shadow-brand-navy/20',
+        default => 'veloce-btn-primary',
     };
 
     $sizeClasses = match ($size) {

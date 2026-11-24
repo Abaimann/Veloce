@@ -16,7 +16,6 @@ use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -83,24 +82,26 @@ final class CreateEmployeeAccountAction
                 'position_title' => $positionTitle,
                 'work_schedule_id' => (int) $payload['work_schedule_id'],
                 'join_date' => $payload['join_date'],
+                'contract_start_date' => $payload['contract_start_date'] ?? $payload['join_date'],
+                'contract_end_date' => $payload['contract_end_date'] ?? null,
+                'base_salary' => (int) ($payload['base_salary'] ?? 0),
+                'fixed_allowance' => (int) ($payload['fixed_allowance'] ?? 0),
                 'is_active' => true,
             ]);
 
             $this->assignOrganizationHeadIfVacant($roleValue, $departmentId, $divisionId, $employee);
 
-            if (Schema::hasTable('leave_balances')) {
-                $currentYear = CarbonImmutable::now((string) config('attendance.timezone', 'Asia/Jakarta'))->year;
-                LeaveBalance::query()->firstOrCreate(
-                    [
-                        'employee_id' => $employee->id,
-                        'year' => $currentYear,
-                    ],
-                    [
-                        'entitled_days' => $employmentType->defaultAnnualLeaveDays(),
-                        'used_days' => 0,
-                    ],
-                );
-            }
+            $currentYear = CarbonImmutable::now((string) config('attendance.timezone', 'Asia/Jakarta'))->year;
+            LeaveBalance::query()->firstOrCreate(
+                [
+                    'employee_id' => $employee->id,
+                    'year' => $currentYear,
+                ],
+                [
+                    'entitled_days' => $employmentType->defaultAnnualLeaveDays(),
+                    'used_days' => 0,
+                ],
+            );
 
             $invite = $this->createInvitation->execute($user, $actor);
 

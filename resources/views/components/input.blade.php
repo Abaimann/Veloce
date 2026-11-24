@@ -41,7 +41,7 @@
             @if ($required) required @endif
             @if ($hasError) aria-invalid="true" aria-describedby="{{ $inputId }}-error" @endif
             {{ $attributes->class([
-                'block w-full min-h-12 rounded-2xl border bg-card py-3 text-sm text-text placeholder:text-muted shadow-xs transition-[border-color,box-shadow] duration-150 focus:outline-none focus:ring-4',
+                'veloce-field block w-full min-h-12 rounded-2xl border py-3 text-sm text-text placeholder:text-muted shadow-2xs transition-[border-color,box-shadow,background-color] duration-150 focus:outline-none focus:ring-4',
                 'pl-12' => $hasLeading,
                 'pl-4' => ! $hasLeading,
                 'pr-14' => $hasTrailing,

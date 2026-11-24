@@ -8,12 +8,17 @@ use App\Http\Controllers\Auth\AcceptInvitationController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Leave\LeaveRequestController;
+use App\Http\Controllers\Management\ActivityLogController;
 use App\Http\Controllers\Management\EmployeeManagementController;
 use App\Http\Controllers\Management\MasterDataController;
 use App\Http\Controllers\Management\TeamAttendanceController;
 use App\Http\Controllers\Media\PrivateMediaController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\Payroll\PayrollController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\TimelineController;
+use App\Http\Controllers\Work\DailyWorkSubmissionController;
+use App\Http\Controllers\Work\TargetController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -79,14 +84,40 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/media/izin/{leaveRequest}/lampiran', [PrivateMediaController::class, 'leaveAttachment'])
         ->name('media.leave.attachment');
 
+    Route::get('/timeline', TimelineController::class)->name('timeline.index');
+
+    Route::prefix('target')->name('targets.')->group(function (): void {
+        Route::get('/', [TargetController::class, 'index'])->name('index');
+        Route::post('/departemen', [TargetController::class, 'storeDepartmentTarget'])->name('department.store');
+        Route::post('/divisi', [TargetController::class, 'storeDivisionTarget'])->name('division.store');
+        Route::patch('/divisi/{divisionTarget}/bobot', [TargetController::class, 'updateWeight'])->name('division.weight');
+    });
+
+    Route::prefix('kerjaan-harian')->name('work.')->group(function (): void {
+        Route::get('/', [DailyWorkSubmissionController::class, 'index'])->name('index');
+        Route::post('/', [DailyWorkSubmissionController::class, 'store'])->name('store');
+        Route::post('/{submission}/setujui', [DailyWorkSubmissionController::class, 'approve'])->name('approve');
+        Route::post('/{submission}/revisi', [DailyWorkSubmissionController::class, 'requestRevision'])->name('revision');
+    });
+
+    Route::prefix('gaji')->name('payroll.')->group(function (): void {
+        Route::get('/', [PayrollController::class, 'index'])->name('index');
+        Route::post('/hitung-ulang', [PayrollController::class, 'recalculate'])->name('recalculate');
+        Route::post('/{payrollPeriod}/final', [PayrollController::class, 'finalize'])->name('finalize');
+    });
+
     Route::prefix('manajemen')->name('management.')->group(function (): void {
         Route::get('/absensi', [TeamAttendanceController::class, 'index'])->name('attendances.index');
 
         Route::get('/karyawan', [EmployeeManagementController::class, 'index'])->name('employees.index');
         Route::get('/karyawan/buat', [EmployeeManagementController::class, 'create'])->name('employees.create');
         Route::post('/karyawan', [EmployeeManagementController::class, 'store'])->name('employees.store');
+        Route::get('/karyawan/{employee}/edit', [EmployeeManagementController::class, 'edit'])->name('employees.edit');
+        Route::put('/karyawan/{employee}', [EmployeeManagementController::class, 'update'])->name('employees.update');
         Route::post('/karyawan/{employee}/undang-ulang', [EmployeeManagementController::class, 'regenerateInvitation'])
             ->name('employees.reinvite');
+
+        Route::get('/log-aktivitas', [ActivityLogController::class, 'index'])->name('activity-logs.index');
 
         Route::get('/master-data', [MasterDataController::class, 'index'])->name('master.index');
         Route::post('/master-data/departemen', [MasterDataController::class, 'storeDepartment'])

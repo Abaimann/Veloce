@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Enums\EmploymentType;
 use App\Enums\RoleName;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -25,6 +26,10 @@ use Spatie\Activitylog\Traits\LogsActivity;
     'position_title',
     'work_schedule_id',
     'join_date',
+    'contract_start_date',
+    'contract_end_date',
+    'base_salary',
+    'fixed_allowance',
     'is_active',
 ])]
 class Employee extends Model
@@ -47,6 +52,10 @@ class Employee extends Model
         return [
             'employment_type' => EmploymentType::class,
             'join_date' => 'immutable_date',
+            'contract_start_date' => 'immutable_date',
+            'contract_end_date' => 'immutable_date',
+            'base_salary' => 'integer',
+            'fixed_allowance' => 'integer',
             'is_active' => 'boolean',
         ];
     }
@@ -121,6 +130,80 @@ class Employee extends Model
     public function attendances(): HasMany
     {
         return $this->hasMany(Attendance::class);
+    }
+
+    /**
+     * @return HasMany<DailyWorkSubmission, $this>
+     */
+    public function workSubmissions(): HasMany
+    {
+        return $this->hasMany(DailyWorkSubmission::class);
+    }
+
+    /**
+     * @return HasMany<PayrollItem, $this>
+     */
+    public function payrollItems(): HasMany
+    {
+        return $this->hasMany(PayrollItem::class);
+    }
+
+    /**
+     * Ringkasan masa kontrak karyawan untuk tampilan manajemen dan filter kontrak.
+     *
+     * @return array{label: string, variant: string, days_remaining: ?int, period_text: string}
+     */
+    public function contractSummary(?CarbonImmutable $referenceDate = null): array
+    {
+        $today = ($referenceDate ?? CarbonImmutable::now((string) config('attendance.timezone', 'Asia/Jakarta')))
+            ->startOfDay();
+
+        if ($this->contract_end_date === null) {
+            if ($this->employment_type === EmploymentType::INTERN) {
+                return [
+                    'label' => 'Magang Berjalan',
+                    'variant' => 'info',
+                    'days_remaining' => null,
+                    'period_text' => ($this->contract_start_date ?? $this->join_date)?->translatedFormat('d M Y').' – Selesai',
+                ];
+            }
+
+            return [
+                'label' => 'Tetap (PKWTT)',
+                'variant' => 'navy',
+                'days_remaining' => null,
+                'period_text' => 'Mulai '.($this->contract_start_date ?? $this->join_date)?->translatedFormat('d M Y'),
+            ];
+        }
+
+        $startLabel = ($this->contract_start_date ?? $this->join_date)?->translatedFormat('d M Y') ?? '-';
+        $endLabel = $this->contract_end_date->translatedFormat('d M Y');
+        $daysRemaining = (int) $today->diffInDays($this->contract_end_date, false);
+
+        if ($daysRemaining < 0) {
+            return [
+                'label' => 'Kontrak Berakhir',
+                'variant' => 'danger',
+                'days_remaining' => $daysRemaining,
+                'period_text' => "{$startLabel} – {$endLabel}",
+            ];
+        }
+
+        if ($daysRemaining <= 30) {
+            return [
+                'label' => "Segera Berakhir ({$daysRemaining} hr)",
+                'variant' => 'warning',
+                'days_remaining' => $daysRemaining,
+                'period_text' => "{$startLabel} – {$endLabel}",
+            ];
+        }
+
+        return [
+            'label' => "Kontrak Aktif ({$daysRemaining} hr)",
+            'variant' => 'success',
+            'days_remaining' => $daysRemaining,
+            'period_text' => "{$startLabel} – {$endLabel}",
+        ];
     }
 
     /**

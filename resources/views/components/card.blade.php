@@ -2,6 +2,6 @@
     'padding' => 'p-4 sm:p-5',
 ])
 
-<div {{ $attributes->merge(['class' => "bg-card border border-border rounded-2xl shadow-xs {$padding}"]) }}>
+<div {{ $attributes->merge(['class' => "veloce-card rounded-3xl {$padding}"]) }}>
     {{ $slot }}
 </div>

@@ -106,4 +106,23 @@ class EmployeePolicy
 
         return false;
     }
+
+    public function update(User $user, Employee $employee): bool
+    {
+        if ($user->hasRole(RoleName::SUPER_ADMIN->value)) {
+            return true;
+        }
+
+        if ($user->hasRole(RoleName::HR_MANAGER->value)) {
+            return ! ($employee->user?->hasRole(RoleName::SUPER_ADMIN->value) ?? false);
+        }
+
+        if ($user->hasRole(RoleName::DEPT_MANAGER->value)) {
+            return $user->employee !== null
+                && $user->employee->department_id === $employee->department_id
+                && ! ($employee->user?->hasAnyRole([RoleName::SUPER_ADMIN->value, RoleName::HR_MANAGER->value]) ?? false);
+        }
+
+        return false;
+    }
 }

@@ -126,11 +126,10 @@ test('dashboard payroll menampilkan ringkasan karyawan dan rekap absensi tanpa l
         ->assertSee('Karyawan')
         ->assertSee(__('attendance.statuses.present'))
         ->assertSee(__('attendance.statuses.late'))
-        ->assertDontSee('Absen Masuk')
-        ->assertDontSee('Absen Pulang')
-        ->assertDontSee(route('attendance.camera', [], false))
-        ->assertDontSee(route('attendance.check-in', [], false))
-        ->assertDontSee(route('attendance.check-out', [], false));
+        ->assertSee('Absen Masuk')
+        ->assertSee(route('attendance.camera', [], false))
+        ->assertSee('Gaji Terhitung Sistem')
+        ->assertSee(route('payroll.index', [], false));
 
     $content = $response->getContent();
     preg_match_all('/<form\b[^>]*>/i', $content, $formMatches);
@@ -165,7 +164,7 @@ test('dashboard super admin menampilkan statistik organisasi dan tautan master d
         ->assertSee(route('management.employees.index', [], false));
 });
 
-test('dashboard division head, dept manager, dan hr manager menampilkan kartu absensi pribadi dan pintasan persetujuan', function (string $role, ?string $email): void {
+test('dashboard division head, dept manager, dan hr manager menampilkan kartu absensi pribadi dan pintasan kerja sesuai peran', function (string $role, ?string $email, string $expectedRouteName): void {
     $now = CarbonImmutable::parse('2026-11-24 08:30:00', 'Asia/Jakarta');
     Carbon::setTestNow($now);
     CarbonImmutable::setTestNow($now);
@@ -180,15 +179,14 @@ test('dashboard division head, dept manager, dan hr manager menampilkan kartu ab
         ->assertSee($actor->name)
         ->assertSee('Absen Masuk')
         ->assertSee(route('attendance.camera', [], false))
-        ->assertSee('Persetujuan')
-        ->assertSee(route('approvals.index', [], false));
+        ->assertSee(route($expectedRouteName, [], false));
 })->with([
-    'Ketua Divisi' => [RoleName::DIVISION_HEAD->value, 'head.prd@veloce.test'],
-    'Manager Departemen' => [RoleName::DEPT_MANAGER->value, 'manager.eng@veloce.test'],
-    'HR Manager' => [RoleName::HR_MANAGER->value, null],
+    'Ketua Divisi' => [RoleName::DIVISION_HEAD->value, 'head.prd@veloce.test', 'work.index'],
+    'Manager Departemen' => [RoleName::DEPT_MANAGER->value, 'manager.eng@veloce.test', 'targets.index'],
+    'HR Manager' => [RoleName::HR_MANAGER->value, null, 'approvals.index'],
 ]);
 
-test('inbox persetujuan dan notifikasi menegakkan otorisasi, isolasi divisi, serta alur approve lalu reject berjenjang', function (): void {
+test('inbox persetujuan dan notifikasi menegakkan otorisasi khusus HR Manager', function (): void {
     $now = CarbonImmutable::parse('2026-11-24 08:30:00', 'Asia/Jakarta');
     Carbon::setTestNow($now);
     CarbonImmutable::setTestNow($now);
@@ -196,15 +194,17 @@ test('inbox persetujuan dan notifikasi menegakkan otorisasi, isolasi divisi, ser
     $applicant = User::query()->where('email', 'operator.prd@veloce.test')->firstOrFail();
     $payroll = User::role(RoleName::PAYROLL->value)->firstOrFail();
     $headPrd = User::query()->where('email', 'head.prd@veloce.test')->firstOrFail();
-    $headMnt = User::query()->where('email', 'head.mnt@veloce.test')->firstOrFail();
     $managerEng = User::query()->where('email', 'manager.eng@veloce.test')->firstOrFail();
+    $hrManager = User::role(RoleName::HR_MANAGER->value)->firstOrFail();
 
     expect(route('approvals.index', [], false))->toBe('/persetujuan')
         ->and(route('notifications.index', [], false))->toBe('/notifikasi');
 
-    // Employee & Payroll ditolak 403 di GET /persetujuan.
+    // Employee, Payroll, Ketua Divisi, dan Manager Departemen non-HR ditolak 403 di GET /persetujuan.
     $this->actingAs($applicant)->get('/persetujuan')->assertForbidden();
     $this->actingAs($payroll)->get('/persetujuan')->assertForbidden();
+    $this->actingAs($headPrd)->get('/persetujuan')->assertForbidden();
+    $this->actingAs($managerEng)->get('/persetujuan')->assertForbidden();
 
     $annualLeave = LeaveType::query()->where('code', 'annual_leave')->firstOrFail();
     $reason = 'Keperluan keluarga mendadak selama dua hari kerja.';
@@ -217,71 +217,46 @@ test('inbox persetujuan dan notifikasi menegakkan otorisasi, isolasi divisi, ser
         $reason,
     );
 
-    // head.prd@veloce.test melihat badge pending = 1 di navbar/layout, pengajuan di /persetujuan, dan notifikasi in-app.
-    $headPrdDashboard = $this->actingAs($headPrd)->get(route('dashboard'));
-    $headPrdDashboard->assertOk();
+    // hr@veloce.test melihat badge pending = 1 di navbar/layout, pengajuan di /persetujuan, dan notifikasi in-app.
+    $hrDashboard = $this->actingAs($hrManager)->get(route('dashboard'));
+    $hrDashboard->assertOk();
 
-    expect($headPrdDashboard->getContent())
+    expect($hrDashboard->getContent())
         ->toMatch('~<a\b[^>]*href=["\'][^"\']*\/persetujuan["\'][^>]*>(?:(?!</a>).)*?Persetujuan(?:(?!</a>).)*?<span[^>]*>\s*1\s*</span>(?:(?!</a>).)*?</a>~s');
 
-    $this->actingAs($headPrd)
+    $this->actingAs($hrManager)
         ->get('/persetujuan')
         ->assertOk()
         ->assertSee($applicant->name)
         ->assertSee($annualLeave->name)
         ->assertSee($reason);
 
-    $this->actingAs($headPrd)
+    $this->actingAs($hrManager)
         ->get(route('notifications.index'))
         ->assertOk()
         ->assertSee($applicant->name)
         ->assertSee($annualLeave->name);
 
-    // head.mnt@veloce.test (divisi lain) tidak melihat pengajuan tersebut di inbox-nya.
-    $this->actingAs($headMnt)
-        ->get('/persetujuan')
-        ->assertOk()
-        ->assertDontSee($applicant->name)
-        ->assertDontSee($reason);
+    // Ketua divisi & manager selain HR ditolak 403 jika mencoba menyetujui/menolak pengajuan absensi/cuti.
+    $this->actingAs($headPrd)->post(route('approvals.approve', $leaveRequest))->assertForbidden();
+    $this->actingAs($managerEng)->post(route('approvals.reject', $leaveRequest), ['note' => 'Tolak'])->assertForbidden();
 
-    // head.prd@veloce.test menyetujui tahap 1.
-    $this->actingAs($headPrd)
-        ->post(route('approvals.approve', $leaveRequest), [
-            'note' => 'Disetujui kepala divisi produksi.',
-        ])
-        ->assertRedirect();
-
-    $leaveRequest->refresh();
-    expect($leaveRequest->status)->toBe(LeaveRequestStatus::PENDING)
-        ->and($leaveRequest->current_step)->toBe(2);
-
-    $this->actingAs($headPrd)
-        ->get('/persetujuan')
-        ->assertOk()
-        ->assertDontSee($reason);
-
-    // manager.eng@veloce.test melihat pengajuan di inbox-nya dan menolak dengan catatan.
-    $this->actingAs($managerEng)
-        ->get('/persetujuan')
-        ->assertOk()
-        ->assertSee($applicant->name)
-        ->assertSee($reason);
-
+    // HR Manager menolak pengajuan dengan catatan.
     $rejectNote = 'Jadwal produksi sedang padat, mohon jadwalkan ulang.';
 
-    $this->actingAs($managerEng)
+    $this->actingAs($hrManager)
         ->post(route('approvals.reject', $leaveRequest), [
             'note' => $rejectNote,
         ])
         ->assertRedirect();
 
     $leaveRequest->refresh();
-    $step2Approval = $leaveRequest->approvals()->where('step', 2)->firstOrFail();
+    $step1Approval = $leaveRequest->approvals()->where('step', 1)->firstOrFail();
 
     expect($leaveRequest->status)->toBe(LeaveRequestStatus::REJECTED)
         ->and($leaveRequest->finalized_at)->not->toBeNull()
-        ->and($step2Approval->status)->toBe(ApprovalStatus::REJECTED)
-        ->and($step2Approval->note)->toBe($rejectNote);
+        ->and($step1Approval->status)->toBe(ApprovalStatus::REJECTED)
+        ->and($step1Approval->note)->toBe($rejectNote);
 
     // Pemohon melihat status berubah, melihat notifikasi baru di GET /notifikasi, dan menandai dibaca.
     $this->actingAs($applicant)

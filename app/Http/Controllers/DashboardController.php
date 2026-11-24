@@ -8,19 +8,22 @@ use App\Enums\AttendanceStatus;
 use App\Enums\EmploymentType;
 use App\Enums\LeaveRequestStatus;
 use App\Enums\RoleName;
+use App\Enums\WorkSubmissionStatus;
 use App\Models\Attendance;
+use App\Models\DailyWorkSubmission;
 use App\Models\Department;
 use App\Models\Division;
 use App\Models\Employee;
 use App\Models\LeaveBalance;
 use App\Models\LeaveRequest;
 use App\Models\OfficeLocation;
+use App\Models\PayrollItem;
+use App\Models\PayrollPeriod;
 use App\Models\User;
 use App\Models\WorkSchedule;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
@@ -37,9 +40,7 @@ class DashboardController extends Controller
 
         $timezone = (string) config('attendance.timezone', 'Asia/Jakarta');
         $nowWib = CarbonImmutable::now($timezone);
-        $unreadNotificationsCount = Schema::hasTable('notifications')
-            ? $user->unreadNotifications()->count()
-            : 0;
+        $unreadNotificationsCount = $user->unreadNotifications()->count();
 
         if ($user->hasRole(RoleName::PAYROLL->value)) {
             return $this->payrollDashboard($user, $nowWib, $unreadNotificationsCount);
@@ -54,6 +55,9 @@ class DashboardController extends Controller
 
     private function payrollDashboard(User $user, CarbonImmutable $nowWib, int $unreadNotificationsCount): View
     {
+        $monthStart = $nowWib->startOfMonth()->toDateString();
+        $monthEnd = $nowWib->endOfMonth()->toDateString();
+
         $employeeCountsByType = Employee::query()
             ->active()
             ->selectRaw('employment_type, COUNT(*) as total')
@@ -73,8 +77,7 @@ class DashboardController extends Controller
         }
 
         $attendanceRawCounts = Attendance::query()
-            ->whereYear('work_date', $nowWib->year)
-            ->whereMonth('work_date', $nowWib->month)
+            ->whereBetween('work_date', [$monthStart, $monthEnd])
             ->selectRaw('status, COUNT(*) as total')
             ->groupBy('status')
             ->get()
@@ -91,8 +94,23 @@ class DashboardController extends Controller
             $monthlyAttendanceSummary[$status->value] = (int) ($attendanceRawCounts[$status->value] ?? 0);
         }
 
+        $todayAttendance = $user->employee !== null
+            ? Attendance::query()
+                ->with('officeLocation')
+                ->where('employee_id', $user->employee->id)
+                ->whereDate('work_date', $nowWib->toDateString())
+                ->first()
+            : null;
+
+        $payrollPeriod = PayrollPeriod::query()->where('year', $nowWib->year)->where('month', $nowWib->month)->first();
+        $payrollTotalNet = $payrollPeriod !== null
+            ? (int) PayrollItem::query()->where('payroll_period_id', $payrollPeriod->id)->sum('net_salary')
+            : null;
+
         return view('dashboard.payroll', [
             'user' => $user,
+            'employee' => $user->employee,
+            'todayAttendance' => $todayAttendance,
             'nowWib' => $nowWib,
             'monthLabel' => $nowWib->translatedFormat('F Y'),
             'employmentCounts' => $employmentCounts,
@@ -103,6 +121,9 @@ class DashboardController extends Controller
             'monthlyAttendanceSummary' => $monthlyAttendanceSummary,
             'attendanceStatuses' => AttendanceStatus::cases(),
             'totalMonthlyAttendanceRecords' => array_sum($monthlyAttendanceSummary),
+            'payrollPeriod' => $payrollPeriod,
+            'payrollTotalNet' => $payrollTotalNet,
+            'pendingApprovalsCount' => 0,
             'unreadNotificationsCount' => $unreadNotificationsCount,
         ]);
     }
@@ -118,9 +139,18 @@ class DashboardController extends Controller
             ->count();
 
         $pendingHrApprovals = LeaveRequest::pendingForApprover($user)->count();
+        $todayAttendance = $user->employee !== null
+            ? Attendance::query()
+                ->with('officeLocation')
+                ->where('employee_id', $user->employee->id)
+                ->whereDate('work_date', $nowWib->toDateString())
+                ->first()
+            : null;
 
         return view('dashboard.admin', [
             'user' => $user,
+            'employee' => $user->employee,
+            'todayAttendance' => $todayAttendance,
             'nowWib' => $nowWib,
             'activeDepartmentsCount' => Department::query()->active()->count(),
             'activeDivisionsCount' => Division::query()->active()->count(),
@@ -203,8 +233,7 @@ class DashboardController extends Controller
 
             $monthlyRawCounts = Attendance::query()
                 ->where('employee_id', $employee->id)
-                ->whereYear('work_date', $nowWib->year)
-                ->whereMonth('work_date', $nowWib->month)
+                ->whereBetween('work_date', [$nowWib->startOfMonth()->toDateString(), $nowWib->endOfMonth()->toDateString()])
                 ->selectRaw('status, COUNT(*) as total')
                 ->groupBy('status')
                 ->get()
@@ -242,6 +271,23 @@ class DashboardController extends Controller
             $remainingLeaveDays = $leaveBalance?->remainingDays() ?? 0;
         }
 
+        $pendingWorkReviewsCount = 0;
+        if ($employee !== null) {
+            if ($user->hasRole(RoleName::DIVISION_HEAD->value) && $employee->division_id !== null) {
+                $pendingWorkReviewsCount = DailyWorkSubmission::query()
+                    ->where('status', WorkSubmissionStatus::PENDING_REVIEW->value)
+                    ->where('employee_id', '!=', $employee->id)
+                    ->whereHas('employee', static fn (Builder $q): Builder => $q->where('division_id', $employee->division_id))
+                    ->count();
+            } elseif ($user->hasRole(RoleName::DEPT_MANAGER->value)) {
+                $pendingWorkReviewsCount = DailyWorkSubmission::query()
+                    ->where('status', WorkSubmissionStatus::PENDING_REVIEW->value)
+                    ->where('employee_id', '!=', $employee->id)
+                    ->whereHas('employee', static fn (Builder $q): Builder => $q->where('department_id', $employee->department_id))
+                    ->count();
+            }
+        }
+
         return view('dashboard.employee', [
             'user' => $user,
             'employee' => $employee,
@@ -256,6 +302,7 @@ class DashboardController extends Controller
             'remainingLeaveDays' => $remainingLeaveDays,
             'isApprover' => $isApprover,
             'pendingApprovalsCount' => $pendingApprovalsCount,
+            'pendingWorkReviewsCount' => $pendingWorkReviewsCount,
             'unreadNotificationsCount' => $unreadNotificationsCount,
         ]);
     }

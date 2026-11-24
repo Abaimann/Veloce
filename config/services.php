@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    'google_drive' => [
+        'credentials_path' => env('GOOGLE_DRIVE_CREDENTIALS_PATH', storage_path('app/private/google-drive-credentials.json')),
+        'credentials_json' => env('GOOGLE_DRIVE_CREDENTIALS_JSON'),
+        'root_folder_id' => env('GOOGLE_DRIVE_ROOT_FOLDER_ID'),
+        'shared_drive_id' => env('GOOGLE_DRIVE_SHARED_DRIVE_ID'),
+    ],
+
 ];

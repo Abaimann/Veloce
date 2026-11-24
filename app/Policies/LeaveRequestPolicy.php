@@ -14,11 +14,10 @@ class LeaveRequestPolicy
 {
     public function viewAny(User $user): bool
     {
-        return ! $user->hasRole(RoleName::PAYROLL->value)
-            && ($user->employee !== null || $user->hasAnyRole([
-                RoleName::HR_MANAGER->value,
-                RoleName::SUPER_ADMIN->value,
-            ]));
+        return $user->employee !== null || $user->hasAnyRole([
+            RoleName::HR_MANAGER->value,
+            RoleName::SUPER_ADMIN->value,
+        ]);
     }
 
     public function view(User $user, LeaveRequest $leaveRequest): bool
@@ -63,7 +62,7 @@ class LeaveRequestPolicy
 
     public function create(User $user): bool
     {
-        return $user->employee !== null && ! $user->hasRole(RoleName::PAYROLL->value);
+        return $user->employee !== null;
     }
 
     public function approve(User $user, LeaveRequest $leaveRequest): bool
@@ -87,13 +86,6 @@ class LeaveRequestPolicy
         return match ($step->role) {
             RoleName::SUPER_ADMIN->value => $user->hasRole(RoleName::SUPER_ADMIN->value),
             RoleName::HR_MANAGER->value => $user->hasRole(RoleName::HR_MANAGER->value),
-            RoleName::DEPT_MANAGER->value => $user->hasRole(RoleName::DEPT_MANAGER->value)
-                && $user->employee !== null
-                && $user->employee->department_id === $targetEmployee->department_id,
-            RoleName::DIVISION_HEAD->value => $user->hasRole(RoleName::DIVISION_HEAD->value)
-                && $user->employee !== null
-                && $user->employee->division_id !== null
-                && $user->employee->division_id === $targetEmployee->division_id,
             default => false,
         };
     }

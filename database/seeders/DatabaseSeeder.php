@@ -136,19 +136,20 @@ class DatabaseSeeder extends Seeder
         $qalQc = $this->upsertDivision($qal, 'QAL-QC', 'Quality Control');
         $qalLog = $this->upsertDivision($qal, 'QAL-LOG', 'Logistik & Gudang');
 
-        // Akun sistem non-karyawan (Super Admin & Payroll)
-        $this->upsertUser(
-            (string) config('attendance.demo.super_admin_email'),
-            'Administrator Sistem',
-            RoleName::SUPER_ADMIN,
-            $demoPassword,
-        );
-
-        $this->upsertUser(
-            (string) config('attendance.demo.payroll_email'),
-            'Tim Payroll & Kompensasi',
-            RoleName::PAYROLL,
-            $demoPassword,
+        // Semua peran (termasuk Super Admin & Payroll) memiliki profil kepegawaian dan wajib absen.
+        $this->upsertEmployeeAccount(
+            email: (string) config('attendance.demo.super_admin_email'),
+            name: 'Administrator Sistem',
+            role: RoleName::SUPER_ADMIN,
+            password: $demoPassword,
+            employeeNumber: 'DCI-ADM-001',
+            department: $hrga,
+            division: null,
+            supervisor: null,
+            employmentType: EmploymentType::EXECUTIVE,
+            positionTitle: 'System Administrator',
+            workSchedule: $workSchedule,
+            joinDate: '2024-01-01',
         );
 
         // HR Manager pada departemen HR & GA
@@ -167,6 +168,21 @@ class DatabaseSeeder extends Seeder
             joinDate: '2024-03-01',
         );
         $hrga->update(['head_employee_id' => $hrEmployee->id]);
+
+        $this->upsertEmployeeAccount(
+            email: (string) config('attendance.demo.payroll_email'),
+            name: 'Tim Payroll & Kompensasi',
+            role: RoleName::PAYROLL,
+            password: $demoPassword,
+            employeeNumber: 'DCI-PAY-001',
+            department: $hrga,
+            division: null,
+            supervisor: $hrEmployee,
+            employmentType: EmploymentType::STAFF,
+            positionTitle: 'Payroll & Compensation Specialist',
+            workSchedule: $workSchedule,
+            joinDate: '2024-04-01',
+        );
 
         // Departemen ENG (Engineering & Produksi)
         $engManager = $this->upsertEmployeeAccount(
@@ -882,6 +898,23 @@ class DatabaseSeeder extends Seeder
         string $joinDate,
     ): Employee {
         $user = $this->upsertUser($email, $name, $role, $password);
+        $joinCarbon = CarbonImmutable::parse($joinDate);
+
+        $contractEndDate = match (true) {
+            $employmentType === EmploymentType::INTERN => $joinCarbon->addMonths(6)->toDateString(),
+            $employmentType === EmploymentType::EXECUTIVE => null,
+            str_starts_with($joinDate, '2025-01') || str_starts_with($joinDate, '2025-02') => '2026-12-15',
+            $employmentType === EmploymentType::STAFF && str_starts_with($joinDate, '2025-') => $joinCarbon->addYears(2)->toDateString(),
+            default => null,
+        };
+
+        [$baseSalary, $fixedAllowance] = match (true) {
+            $role === RoleName::SUPER_ADMIN => [22_000_000, 5_000_000],
+            $employmentType === EmploymentType::EXECUTIVE => [18_000_000, 4_000_000],
+            $role === RoleName::DIVISION_HEAD => [11_500_000, 2_500_000],
+            $employmentType === EmploymentType::INTERN => [2_500_000, 500_000],
+            default => [7_200_000, 1_200_000],
+        };
 
         return Employee::query()->updateOrCreate(
             ['user_id' => $user->id],
@@ -894,6 +927,10 @@ class DatabaseSeeder extends Seeder
                 'position_title' => $positionTitle,
                 'work_schedule_id' => $workSchedule->id,
                 'join_date' => $joinDate,
+                'contract_start_date' => $joinDate,
+                'contract_end_date' => $contractEndDate,
+                'base_salary' => $baseSalary,
+                'fixed_allowance' => $fixedAllowance,
                 'is_active' => true,
             ],
         );

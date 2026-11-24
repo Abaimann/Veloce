@@ -15,6 +15,7 @@ class AttendancePolicy
         return $user->hasAnyRole([
             RoleName::SUPER_ADMIN->value,
             RoleName::HR_MANAGER->value,
+            RoleName::PAYROLL->value,
             RoleName::DEPT_MANAGER->value,
             RoleName::DIVISION_HEAD->value,
             RoleName::EMPLOYEE->value,
@@ -27,15 +28,15 @@ class AttendancePolicy
             return true;
         }
 
-        if ($user->hasRole(RoleName::PAYROLL->value)) {
-            return false;
-        }
-
         $targetEmployee = $attendance->employee;
         $viewerEmployee = $user->employee;
 
         if ($targetEmployee === null || $viewerEmployee === null) {
             return false;
+        }
+
+        if ($user->hasRole(RoleName::PAYROLL->value)) {
+            return $targetEmployee->id === $viewerEmployee->id;
         }
 
         if ($user->hasRole(RoleName::DEPT_MANAGER->value)) {

@@ -35,9 +35,11 @@ test('demo seeder mengisi seluruh role, struktur organisasi, master data, dan ak
         ->and($superAdmins->first()->email)->toBe((string) config('attendance.demo.super_admin_email'))
         ->and($hrManagers->first()->email)->toBe((string) config('attendance.demo.hr_manager_email'))
         ->and($payrolls->first()->email)->toBe((string) config('attendance.demo.payroll_email'))
-        ->and($payrolls->first()->employee)->toBeNull()
+        ->and($superAdmins->first()->employee)->not->toBeNull()
+        ->and($payrolls->first()->employee)->not->toBeNull()
         ->and($hrManagers->first()->employee)->not->toBeNull()
-        ->and($hrManagers->first()->employee->employment_type)->toBe(EmploymentType::EXECUTIVE);
+        ->and($hrManagers->first()->employee->employment_type)->toBe(EmploymentType::EXECUTIVE)
+        ->and($hrManagers->first()->employee->base_salary)->toBeGreaterThan(0);
 
     $configuredPassword = config('attendance.demo.default_password');
     if (is_string($configuredPassword) && $configuredPassword !== '') {

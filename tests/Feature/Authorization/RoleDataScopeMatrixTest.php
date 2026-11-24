@@ -124,8 +124,11 @@ test('matriks EmployeePolicy dan MasterDataPolicy berjalan sesuai hak akses role
         ->and($employeePolicy->regenerateInvitation($engManager, $qalStaff->employee))->toBeFalse()
         ->and($employeePolicy->regenerateInvitation($engPrdHead, $engPrdStaff->employee))->toBeFalse();
 
+    $unassignedAdmin = User::factory()->create();
+    $unassignedAdmin->assignRole(RoleName::SUPER_ADMIN->value);
+
     $superAdminEmployee = Employee::query()->create([
-        'user_id' => $superAdmin->id,
+        'user_id' => $unassignedAdmin->id,
         'employee_number' => 'DCI-SA-001',
         'department_id' => $eng->id,
         'division_id' => null,
@@ -370,4 +373,113 @@ test('CreateEmployeeAccountAction menegakkan validasi divisi lintas departemen, 
         ->and($newDiv->fresh()->head_employee_id)->toBe($divHeadResult['employee']->id)
         ->and($deptManagerResult['invitation_url'])->toContain('/undangan/')
         ->and(Activity::query()->where('subject_type', Employee::class)->where('subject_id', $divHeadResult['employee']->id)->exists())->toBeTrue();
+});
+
+test('daftar karyawan mendukung pencarian dan filter departemen, divisi, peran, tipe, serta status sambil menjaga isolasi data', function (): void {
+    $this->seed();
+
+    $hrManager = User::role(RoleName::HR_MANAGER->value)->firstOrFail();
+    $engManager = User::query()->where('email', 'manager.eng@veloce.test')->firstOrFail();
+    $qal = Department::query()->where('code', 'QAL')->firstOrFail();
+    $engPrd = Division::query()->where('code', 'ENG-PRD')->firstOrFail();
+    $workSchedule = WorkSchedule::query()->active()->firstOrFail();
+
+    // Tambah akun menunggu aktivasi dan nonaktif untuk menguji filter status akun.
+    $pendingUser = User::factory()->unactivated()->create([
+        'name' => 'Karyawan Undangan Baru',
+        'email' => 'undangan.baru@veloce.test',
+    ]);
+    $pendingUser->assignRole(RoleName::EMPLOYEE->value);
+    Employee::query()->create([
+        'user_id' => $pendingUser->id,
+        'employee_number' => 'DCI-NEW-001',
+        'department_id' => $qal->id,
+        'division_id' => null,
+        'work_schedule_id' => $workSchedule->id,
+        'employment_type' => EmploymentType::STAFF,
+        'position_title' => 'Staff Baru Quality',
+        'is_active' => true,
+        'join_date' => '2026-11-20',
+    ]);
+
+    $inactiveUser = User::factory()->inactive()->create([
+        'name' => 'Karyawan Nonaktif Uji',
+        'email' => 'nonaktif.uji@veloce.test',
+    ]);
+    $inactiveUser->assignRole(RoleName::EMPLOYEE->value);
+    Employee::query()->create([
+        'user_id' => $inactiveUser->id,
+        'employee_number' => 'DCI-OFF-001',
+        'department_id' => $qal->id,
+        'division_id' => null,
+        'work_schedule_id' => $workSchedule->id,
+        'employment_type' => EmploymentType::STAFF,
+        'position_title' => 'Ex Staff',
+        'is_active' => false,
+        'join_date' => '2025-01-10',
+    ]);
+
+    // Pencarian q berdasarkan nama / NIK / email.
+    $this->actingAs($hrManager)
+        ->get(route('management.employees.index', ['q' => 'Dimas Saputra']))
+        ->assertOk()
+        ->assertSee('Dimas Saputra')
+        ->assertDontSee('Fajar Nugroho');
+
+    $this->actingAs($hrManager)
+        ->get(route('management.employees.index', ['q' => 'DCI-QAL-003']))
+        ->assertOk()
+        ->assertSee('Fajar Nugroho')
+        ->assertDontSee('Siti Aminah');
+
+    // Filter departemen, divisi, peran, dan tipe karyawan.
+    $this->actingAs($hrManager)
+        ->get(route('management.employees.index', ['department_id' => $qal->id]))
+        ->assertOk()
+        ->assertSee('Fajar Nugroho')
+        ->assertDontSee('Siti Aminah');
+
+    $this->actingAs($hrManager)
+        ->get(route('management.employees.index', ['division_id' => $engPrd->id]))
+        ->assertOk()
+        ->assertSee('Siti Aminah')
+        ->assertDontSee('Rudi Hartono');
+
+    $this->actingAs($hrManager)
+        ->get(route('management.employees.index', ['division_id' => 'none']))
+        ->assertOk()
+        ->assertSee('Lestari Wulandari')
+        ->assertDontSee('Siti Aminah');
+
+    $this->actingAs($hrManager)
+        ->get(route('management.employees.index', ['role' => RoleName::DEPT_MANAGER->value]))
+        ->assertOk()
+        ->assertSee('Budi Santoso')
+        ->assertDontSee('Siti Aminah');
+
+    $this->actingAs($hrManager)
+        ->get(route('management.employees.index', ['employment_type' => EmploymentType::INTERN->value]))
+        ->assertOk()
+        ->assertSee('Dimas Saputra')
+        ->assertDontSee('Siti Aminah');
+
+    // Filter status akun.
+    $this->actingAs($hrManager)
+        ->get(route('management.employees.index', ['status' => 'pending_activation']))
+        ->assertOk()
+        ->assertSee('Karyawan Undangan Baru')
+        ->assertDontSee('Siti Aminah');
+
+    $this->actingAs($hrManager)
+        ->get(route('management.employees.index', ['status' => 'inactive']))
+        ->assertOk()
+        ->assertSee('Karyawan Nonaktif Uji')
+        ->assertDontSee('Siti Aminah');
+
+    // Manager departemen tetap terisolasi ke departemennya meski parameter department_id dimanipulasi.
+    $this->actingAs($engManager)
+        ->get(route('management.employees.index', ['department_id' => $qal->id]))
+        ->assertOk()
+        ->assertSee('Siti Aminah')
+        ->assertDontSee('Fajar Nugroho');
 });

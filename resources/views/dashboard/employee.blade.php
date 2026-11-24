@@ -97,61 +97,65 @@
             <section
                 x-data="serverClock({{ $nowWib->getTimestampMs() }})"
                 aria-label="Status Kehadiran Hari Ini"
-                class="relative isolate overflow-hidden rounded-3xl bg-gradient-to-br from-brand-navy to-brand-ink p-5 text-on-brand shadow-lg shadow-brand-ink/15 sm:p-6"
+                class="timeline-hero-blueprint rounded-3xl p-5 text-on-brand sm:p-7"
             >
-                <div class="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-brand-green/20 blur-3xl" aria-hidden="true"></div>
-                <svg class="pointer-events-none absolute -right-12 -bottom-14 h-48 w-48 text-on-brand/10" viewBox="0 0 200 200" fill="none" aria-hidden="true">
-                    <circle cx="100" cy="100" r="45" stroke="currentColor" stroke-width="1.2" />
+                <svg class="pointer-events-none absolute -right-12 -bottom-14 h-52 w-52 text-on-brand/10" viewBox="0 0 200 200" fill="none" aria-hidden="true">
+                    <circle cx="100" cy="100" r="45" stroke="currentColor" stroke-width="1.2" stroke-dasharray="5 5" />
                     <circle cx="100" cy="100" r="75" stroke="currentColor" stroke-width="1.2" />
-                    <circle cx="100" cy="100" r="98" stroke="currentColor" stroke-width="1.2" />
+                    <circle cx="100" cy="100" r="98" stroke="currentColor" stroke-width="1.2" stroke-dasharray="3 6" />
                 </svg>
 
-                <div class="relative flex flex-wrap items-start justify-between gap-3">
+                <div class="relative z-10 flex flex-wrap items-start justify-between gap-3">
                     <div class="min-w-0">
-                        <p class="text-xs font-medium text-on-brand/80">{{ $greeting }},</p>
-                        <h2 class="mt-0.5 truncate text-xl font-bold tracking-tight text-on-brand sm:text-2xl">
+                        <div class="mb-2 inline-flex items-center gap-2 rounded-full border border-on-brand/20 bg-on-brand/10 px-3 py-1 text-[11px] font-bold tracking-wider uppercase text-on-brand">
+                            <span class="timeline-beacon-dot h-2 w-2 rounded-full bg-brand-green"></span>
+                            {{ $greeting }}
+                        </div>
+                        <h2 class="truncate text-2xl font-extrabold tracking-tight text-on-brand sm:text-3xl">
                             {{ $user->name }}
                         </h2>
                         @if ($unitLabel)
-                            <p class="mt-0.5 text-xs text-on-brand/80">{{ $unitLabel }}</p>
+                            <p class="mt-0.5 text-xs font-medium text-on-brand/80 sm:text-sm">{{ $unitLabel }}</p>
                         @elseif ($primaryRole)
-                            <p class="mt-0.5 text-xs text-on-brand/80">{{ $primaryRole->label() }}</p>
+                            <p class="mt-0.5 text-xs font-medium text-on-brand/80 sm:text-sm">{{ $primaryRole->label() }}</p>
                         @endif
                     </div>
 
                     @if ($primaryRole)
-                        <span class="rounded-full bg-on-brand/15 px-3 py-1 text-[11px] font-semibold text-on-brand ring-1 ring-on-brand/15">
+                        <span class="timeline-glass-tile rounded-full px-3.5 py-1.5 text-xs font-bold text-on-brand">
                             {{ $primaryRole->label() }}
                         </span>
                     @endif
                 </div>
 
-                <div class="relative mt-5 border-t border-on-brand/15 pt-4">
-                    <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                        <div>
-                            <p class="text-3xl font-bold tracking-tight text-on-brand tabular-nums sm:text-4xl" x-text="timeText">
-                                {{ $nowWib->format('H:i:s') }} WIB
-                            </p>
-                            <p class="mt-1 text-xs text-on-brand/80" x-text="dateText">
-                                {{ $nowWib->translatedFormat('l, d F Y') }}
-                            </p>
-                        </div>
+                <div class="relative z-10 mt-5 grid gap-3 border-t border-on-brand/15 pt-5 lg:grid-cols-12 lg:items-center">
+                    <div class="timeline-glass-tile rounded-2xl px-4 py-3.5 lg:col-span-5">
+                        <p class="text-[11px] font-bold tracking-wider uppercase text-on-brand/70">Waktu Server WIB</p>
+                        <p class="mt-1 text-2xl font-extrabold tracking-tight text-on-brand tabular-nums sm:text-4xl" x-text="timeText">
+                            {{ $nowWib->format('H:i:s') }} WIB
+                        </p>
+                        <p class="mt-0.5 text-xs text-on-brand/80" x-text="dateText">
+                            {{ $nowWib->translatedFormat('l, d F Y') }}
+                        </p>
+                    </div>
 
+                    <div class="grid gap-3 sm:grid-cols-2 lg:col-span-7">
                         @if ($scheduleText)
-                            <div class="rounded-2xl bg-on-brand/10 px-3.5 py-2 text-xs ring-1 ring-on-brand/10">
-                                <span class="text-on-brand/75">Jadwal Hari Ini:</span>
-                                <span class="ml-1 font-bold tabular-nums text-on-brand">{{ $scheduleText }}</span>
+                            <div class="timeline-glass-tile rounded-2xl px-4 py-3.5">
+                                <p class="text-[11px] font-bold tracking-wider uppercase text-on-brand/70">Jadwal Hari Ini</p>
+                                <p class="mt-1.5 text-base font-extrabold tabular-nums text-on-brand">{{ $scheduleText }}</p>
+                                <p class="mt-0.5 text-[11px] text-on-brand/70">Jam kerja resmi kantor</p>
                             </div>
                         @endif
-                    </div>
-                </div>
 
-                <div class="relative mt-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-on-brand/10 px-4 py-3 ring-1 ring-on-brand/15 backdrop-blur-xs">
-                    <div class="min-w-0">
-                        <p class="text-[11px] font-medium text-on-brand/75">Status Hari Ini</p>
-                        <p class="mt-0.5 text-sm font-bold text-on-brand">{{ $statusText }}</p>
+                        <div class="timeline-glass-tile flex flex-col justify-between gap-2 rounded-2xl px-4 py-3.5 {{ $scheduleText ? '' : 'sm:col-span-2' }}">
+                            <div class="flex items-center justify-between gap-2">
+                                <p class="text-[11px] font-bold tracking-wider uppercase text-on-brand/70">Status Hari Ini</p>
+                                <x-badge :variant="$statusVariant">{{ $statusBadgeText }}</x-badge>
+                            </div>
+                            <p class="text-sm font-extrabold text-on-brand">{{ $statusText }}</p>
+                        </div>
                     </div>
-                    <x-badge :variant="$statusVariant">{{ $statusBadgeText }}</x-badge>
                 </div>
             </section>
 
@@ -263,6 +267,56 @@
                 </div>
             </div>
         @endif
+
+        {{-- Pintasan Target, Upload Kerjaan Drive PT, Timeline & Gaji (HR) --}}
+        <div class="grid gap-3 sm:grid-cols-2 {{ $user->hasRole(\App\Enums\RoleName::HR_MANAGER->value) ? 'lg:grid-cols-4' : 'lg:grid-cols-3' }}">
+            <x-card class="flex flex-col justify-between gap-2.5">
+                <div>
+                    <p class="text-sm font-bold text-brand-ink">Target &amp; Bobot</p>
+                    <p class="mt-0.5 text-xs text-muted">Pantau target bulanan dan mingguan divisi.</p>
+                </div>
+                <x-button href="{{ route('targets.index') }}" variant="secondary" size="sm" fullWidth>
+                    Lihat Target
+                </x-button>
+            </x-card>
+
+            <x-card class="flex flex-col justify-between gap-2.5">
+                <div>
+                    <div class="flex items-center justify-between gap-2">
+                        <p class="text-sm font-bold text-brand-ink">Kerjaan Harian</p>
+                        @if (($pendingWorkReviewsCount ?? 0) > 0)
+                            <x-badge variant="warning">{{ $pendingWorkReviewsCount }} Konfirmasi</x-badge>
+                        @endif
+                    </div>
+                    <p class="mt-0.5 text-xs text-muted">Upload bukti kerja harian ke Drive PT.</p>
+                </div>
+                <x-button href="{{ route('work.index') }}" variant="checkin" size="sm" fullWidth>
+                    Buka Drive PT
+                </x-button>
+            </x-card>
+
+            <x-card class="flex flex-col justify-between gap-2.5">
+                <div>
+                    <p class="text-sm font-bold text-brand-ink">Timeline Tugas</p>
+                    <p class="mt-0.5 text-xs text-muted">Peta progres bulanan, mingguan, dan bukti harian.</p>
+                </div>
+                <x-button href="{{ route('timeline.index') }}" variant="secondary" size="sm" fullWidth>
+                    Lihat Timeline
+                </x-button>
+            </x-card>
+
+            @if ($user->hasRole(\App\Enums\RoleName::HR_MANAGER->value))
+                <x-card class="flex flex-col justify-between gap-2.5 border-brand-navy/25 bg-brand-navy-soft/35">
+                    <div>
+                        <p class="text-sm font-bold text-brand-ink">Gaji Sistem</p>
+                        <p class="mt-0.5 text-xs text-muted">Rincian perhitungan gaji otomatis bulanan.</p>
+                    </div>
+                    <x-button href="{{ route('payroll.index') }}" variant="primary" size="sm" fullWidth>
+                        Buka Gaji
+                    </x-button>
+                </x-card>
+            @endif
+        </div>
 
         @if ($employee !== null)
             {{-- 4 Kartu Ringkasan Bulan Ini --}}

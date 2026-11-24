@@ -25,7 +25,6 @@ use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
@@ -63,19 +62,18 @@ class AppServiceProvider extends ServiceProvider
                 return;
             }
 
+            $user->loadMissing('roles');
             $data = $view->getData();
 
             if (! isset($data['pendingApprovalsCount'])) {
-                $pending = Schema::hasTable('leave_requests') && $user->primaryRole()?->isApprover()
+                $pending = $user->primaryRole()?->isApprover()
                     ? LeaveRequest::query()->pendingForApprover($user)->count()
                     : 0;
                 $view->with('pendingApprovalsCount', $pending);
             }
 
             if (! isset($data['unreadNotificationsCount'])) {
-                $unread = Schema::hasTable('notifications')
-                    ? $user->unreadNotifications()->count()
-                    : 0;
+                $unread = $user->unreadNotifications()->count();
                 $view->with('unreadNotificationsCount', $unread);
             }
         });
