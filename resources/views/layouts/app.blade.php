@@ -139,7 +139,7 @@
         </aside>
     </div>
 
-    <div class="min-h-screen lg:flex" x-data="sidebarShell()">
+    <div class="min-h-screen overflow-x-clip lg:flex" x-data="sidebarShell()">
         {{-- Desktop Left Deep-Ink Command Sidebar --}}
         <aside class="sidebar-desktop veloce-sidebar-shell hidden text-on-brand lg:sticky lg:top-0 lg:z-30 lg:flex lg:h-screen lg:w-68 lg:shrink-0 lg:flex-col">
             <button
@@ -267,7 +267,7 @@
                 </div>
             </header>
 
-            <main class="veloce-main veloce-page-enter w-full flex-1 px-3.5 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6 {{ $hideBottomNav ? '' : 'mb-safe-nav lg:pb-10' }}">
+            <main class="veloce-main veloce-page-enter w-full max-w-full flex-1 overflow-x-clip px-3.5 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6 {{ $hideBottomNav ? '' : 'mb-safe-nav lg:pb-10' }}">
                 {{ $slot }}
             </main>
         </div>
@@ -276,10 +276,10 @@
     {{-- Floating Sculpted Bottom Dock (Mobile-First) --}}
     @if (! $hideBottomNav)
         <nav
-            class="fixed right-3 bottom-2.5 left-3 z-40 rounded-3xl veloce-mobile-dock pb-safe lg:hidden"
+            class="fixed right-2.5 bottom-2.5 left-2.5 z-40 rounded-3xl veloce-mobile-dock pb-safe lg:hidden"
             aria-label="Menu Bawah Mobile"
         >
-            <div class="mx-auto flex max-w-md items-end justify-between gap-0.5 px-2 pt-1.5">
+            <div class="mx-auto flex max-w-md items-end justify-between gap-0.5 px-1.5 pt-1.5">
                 <a
                     href="{{ route('dashboard') }}"
                     class="flex min-h-11 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-2xl px-1 py-1 text-[10px] font-bold {{ request()->routeIs('dashboard') ? 'text-brand-navy' : 'text-muted' }}"

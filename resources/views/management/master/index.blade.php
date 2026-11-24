@@ -122,7 +122,7 @@
 
         {{-- TAB 1: DEPARTEMEN --}}
         <section x-show="tab === 'departments'" class="grid gap-5 lg:grid-cols-12">
-            <div class="lg:col-span-4">
+            <div class="min-w-0 lg:col-span-4">
                 <x-card class="space-y-4">
                     <div>
                         <h2 class="text-base font-bold text-brand-ink">Tambah Departemen</h2>
@@ -164,7 +164,7 @@
                 </x-card>
             </div>
 
-            <div class="lg:col-span-8">
+            <div class="min-w-0 lg:col-span-8">
                 @if ($departments->isEmpty())
                     <x-empty-state title="Belum ada departemen" description="Tambahkan departemen pertama melalui formulir di samping." />
                 @else
@@ -249,7 +249,7 @@
 
         {{-- TAB 2: DIVISI --}}
         <section x-show="tab === 'divisions'" class="grid gap-5 lg:grid-cols-12">
-            <div class="lg:col-span-4">
+            <div class="min-w-0 lg:col-span-4">
                 <x-card class="space-y-4">
                     <div>
                         <h2 class="text-base font-bold text-brand-ink">Tambah Divisi</h2>
@@ -300,7 +300,7 @@
                 </x-card>
             </div>
 
-            <div class="lg:col-span-8">
+            <div class="min-w-0 lg:col-span-8">
                 @if ($divisions->isEmpty())
                     <x-empty-state title="Belum ada divisi" description="Tambahkan divisi untuk mengelompokkan tim di dalam departemen." />
                 @else
@@ -386,7 +386,7 @@
 
         {{-- TAB 3: JADWAL KERJA --}}
         <section x-show="tab === 'schedules'" class="grid gap-5 lg:grid-cols-12">
-            <div class="lg:col-span-4">
+            <div class="min-w-0 lg:col-span-4">
                 <x-card class="space-y-4">
                     <div>
                         <h2 class="text-base font-bold text-brand-ink">Tambah Jadwal Kerja</h2>
@@ -466,7 +466,7 @@
                 </x-card>
             </div>
 
-            <div class="lg:col-span-8">
+            <div class="min-w-0 lg:col-span-8">
                 @if ($workSchedules->isEmpty())
                     <x-empty-state title="Belum ada jadwal kerja" description="Buat jadwal kerja untuk menentukan jam operasional karyawan." />
                 @else
@@ -566,7 +566,7 @@
 
         {{-- TAB 4: LOKASI KANTOR --}}
         <section x-show="tab === 'offices'" class="grid gap-5 lg:grid-cols-12">
-            <div class="lg:col-span-4">
+            <div class="min-w-0 lg:col-span-4">
                 <x-card class="space-y-4">
                     <div>
                         <h2 class="text-base font-bold text-brand-ink">Tambah Lokasi Kantor</h2>
@@ -632,7 +632,7 @@
                 </x-card>
             </div>
 
-            <div class="lg:col-span-8">
+            <div class="min-w-0 lg:col-span-8">
                 @if ($officeLocations->isEmpty())
                     <x-empty-state title="Belum ada lokasi kantor" description="Tambahkan koordinat lokasi kantor untuk validasi radius absensi." />
                 @else
@@ -720,7 +720,7 @@
 
         {{-- TAB 5: HARI LIBUR --}}
         <section x-show="tab === 'holidays'" class="grid gap-5 lg:grid-cols-12">
-            <div class="lg:col-span-4">
+            <div class="min-w-0 lg:col-span-4">
                 <x-card class="space-y-4">
                     <div>
                         <h2 class="text-base font-bold text-brand-ink">Tambah Hari Libur</h2>
@@ -754,7 +754,7 @@
                 </x-card>
             </div>
 
-            <div class="lg:col-span-8">
+            <div class="min-w-0 lg:col-span-8">
                 @if ($holidays->isEmpty())
                     <x-empty-state title="Belum ada hari libur" description="Tambahkan daftar hari libur nasional atau libur perusahaan." />
                 @else

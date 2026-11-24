@@ -86,7 +86,7 @@
                             name="work_file"
                             type="file"
                             required
-                            class="block w-full rounded-2xl border border-border bg-card px-4 py-2.5 text-sm text-text file:mr-3 file:rounded-xl file:border-0 file:bg-brand-navy-soft file:px-3.5 file:py-1.5 file:text-xs file:font-semibold file:text-brand-ink hover:file:bg-brand-navy/15"
+                            class="block w-full min-w-0 max-w-full overflow-hidden rounded-2xl border border-border bg-card px-3.5 py-2.5 text-xs text-text sm:px-4 sm:text-sm file:mr-2.5 file:rounded-xl file:border-0 file:bg-brand-navy-soft file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-brand-ink hover:file:bg-brand-navy/15"
                         >
                         @error('work_file')
                             <p class="text-xs font-medium text-danger-ink">{{ $message }}</p>
@@ -137,23 +137,23 @@
                                     </div>
 
                                     @if ($item->status !== \App\Enums\WorkSubmissionStatus::APPROVED)
-                                        <div class="flex shrink-0 flex-wrap items-center gap-2">
+                                        <div class="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
                                             <form method="POST" action="{{ route('work.approve', $item) }}">
                                                 @csrf
-                                                <x-button type="submit" variant="checkin" size="sm">✓ Cocok &amp; Centang</x-button>
+                                                <x-button type="submit" variant="checkin" size="sm" class="w-full sm:w-auto">✓ Cocok &amp; Centang</x-button>
                                             </form>
 
                                             @if ($item->status === \App\Enums\WorkSubmissionStatus::PENDING_REVIEW)
-                                                <form method="POST" action="{{ route('work.revision', $item) }}" class="flex items-center gap-1.5">
+                                                <form method="POST" action="{{ route('work.revision', $item) }}" class="flex w-full min-w-0 items-center gap-1.5 sm:w-auto">
                                                     @csrf
                                                     <input
                                                         type="text"
                                                         name="review_note"
                                                         required
                                                         placeholder="Catatan revisi..."
-                                                        class="min-h-10 rounded-xl border border-border bg-card px-3 text-xs text-text"
+                                                        class="min-h-10 w-full min-w-0 flex-1 rounded-xl border border-border bg-card px-3 text-xs text-text sm:w-40 sm:flex-none"
                                                     >
-                                                    <x-button type="submit" variant="danger-outline" size="sm">Revisi</x-button>
+                                                    <x-button type="submit" variant="danger-outline" size="sm" class="shrink-0">Revisi</x-button>
                                                 </form>
                                             @endif
                                         </div>

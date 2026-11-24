@@ -91,9 +91,9 @@
         }"
     >
         {{-- HERO RADAR RINGKAS --}}
-        <section class="timeline-hero-blueprint rounded-3xl p-5 text-on-brand sm:p-6">
+        <section class="timeline-hero-blueprint rounded-3xl p-4 text-on-brand sm:p-6">
             <div class="relative z-10 grid gap-5 lg:grid-cols-12 lg:items-center">
-                <div class="space-y-4 lg:col-span-7">
+                <div class="min-w-0 space-y-4 lg:col-span-7">
                     <div class="flex flex-wrap items-center gap-2">
                         <span class="inline-flex items-center gap-2 rounded-full border border-on-brand/20 bg-on-brand/10 px-3 py-1 text-[11px] font-bold tracking-wider uppercase text-on-brand">
                             <span class="timeline-beacon-dot h-2 w-2 rounded-full bg-brand-green"></span>
@@ -156,7 +156,7 @@
                 </div>
 
                 {{-- 3 RADIAL PROGRESS DIALS --}}
-                <div class="grid grid-cols-3 gap-2.5 lg:col-span-5">
+                <div class="grid min-w-0 grid-cols-3 gap-1.5 sm:gap-2.5 lg:col-span-5">
                     @foreach ($gaugeCards as $gauge)
                         @php
                             $clamped = min(100, max(0, $gauge['percent']));
@@ -165,9 +165,9 @@
                         <button
                             type="button"
                             x-on:click="activeTier = activeTier === '{{ $gauge['key'] }}' ? 'all' : '{{ $gauge['key'] }}'"
-                            class="timeline-glass-tile flex cursor-pointer flex-col items-center rounded-2xl p-3 text-center"
+                            class="timeline-glass-tile flex min-w-0 cursor-pointer flex-col items-center rounded-2xl p-2 text-center sm:p-3"
                         >
-                            <div class="relative flex h-14 w-14 items-center justify-center sm:h-16 sm:w-16">
+                            <div class="relative flex h-11 w-11 items-center justify-center sm:h-16 sm:w-16">
                                 <svg class="h-full w-full -rotate-90" viewBox="0 0 56 56">
                                     <circle cx="28" cy="28" r="22" fill="none" stroke-width="5" class="timeline-ring-track" />
                                     <circle
@@ -276,9 +276,9 @@
                                     <div class="h-full {{ $barFillClass }}" style="width: {{ min(100, max(6, $item['progress_percent'])) }}%;"></div>
                                 </div>
 
-                                <div class="flex items-center justify-between text-[11px] text-muted">
-                                    <span>{{ $item['start_label'] }}–{{ $item['end_label'] }}</span>
-                                    <span class="font-semibold text-text">{{ $item['metric_text'] }}</span>
+                                <div class="flex flex-wrap items-center justify-between gap-1 text-[11px] text-muted">
+                                    <span class="shrink-0">{{ $item['start_label'] }}–{{ $item['end_label'] }}</span>
+                                    <span class="min-w-0 truncate font-semibold text-text">{{ $item['metric_text'] }}</span>
                                 </div>
                             </div>
                         @endforeach

@@ -167,8 +167,8 @@
                             @if ($directChildren->isNotEmpty())
                                 <div class="space-y-1.5 border-t border-border pt-2.5 text-xs">
                                     @foreach ($directChildren as $child)
-                                        <div class="flex items-center justify-between gap-2 rounded-xl bg-surface px-3 py-1.5">
-                                            <span class="truncate font-semibold text-text">{{ $child->title }}</span>
+                                        <div class="flex min-w-0 items-center justify-between gap-2 rounded-xl bg-surface px-3 py-1.5">
+                                            <span class="min-w-0 flex-1 truncate font-semibold text-text">{{ $child->title }}</span>
                                             <span class="shrink-0 text-[11px] font-bold text-brand-ink tabular-nums">
                                                 {{ number_format((float) $child->weight_percent, 0) }}% bobot · {{ number_format((float) $child->progress_percent, 0) }}%
                                             </span>

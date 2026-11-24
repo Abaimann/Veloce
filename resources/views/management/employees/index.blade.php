@@ -305,7 +305,7 @@
                                 <p class="truncate text-sm font-bold text-brand-ink">
                                     {{ $account?->name ?? '-' }}
                                 </p>
-                                <p class="text-xs font-medium text-muted">
+                                <p class="truncate text-xs font-medium text-muted">
                                     {{ $employee->employee_number }} · {{ $account?->email ?? '-' }}
                                 </p>
                             </div>
