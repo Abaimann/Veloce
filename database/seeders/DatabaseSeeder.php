@@ -48,6 +48,10 @@ class DatabaseSeeder extends Seeder
             $this->seedLeaveBalances();
         });
 
+        if (! app()->runningUnitTests()) {
+            $this->call(OperationalDataSeeder::class);
+        }
+
         app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
 

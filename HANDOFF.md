@@ -16,6 +16,7 @@ Dokumen ini dibuat agar sesi/akun Antigravity baru dapat langsung memahami kondi
   - Layout desktop dibuat *full-width* (menghapus `max-w-5xl` pada `<header>` & `<main>` di `resources/views/layouts/app.blade.php`) dengan sidebar desktop sticky (`256px`).
   - Branding penuh diperbarui ke **Veloce** (logo SVG baru di `public/brand/logo.svg` dengan cache-busting `?v=filemtime(...)` di `resources/views/components/brand-logo.blade.php`, `lang/id/ui.php`, `public/manifest.webmanifest`, `config/attendance.php`, serta `OfficeLocation` di PostgreSQL).
   - Sidebar desktop kini memiliki tombol toggle (`Kecilkan sidebar` / `Perluas sidebar`) dengan animasi halus (`300ms cubic-bezier(0.22, 1, 0.36, 1)`) ke mode *icon-only* (`80px`) yang tersimpan di `localStorage` (`veloce_sidebar_collapsed`).
+  - **Data Operasional Lengkap**: Ditambahkan `database/seeders/OperationalDataSeeder.php` yang mengisi data operasional realistis (219 baris presensi 3 minggu terakhir, presensi hari ini, 8 pengajuan cuti/izin/sakit/WFH dengan status approved, pending, dan rejected, serta notifikasi in-app untuk menguji alur persetujuan lintas role).
 
 ---
 
