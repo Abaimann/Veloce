@@ -1,0 +1,45 @@
+/*
+ * Veloce — Sistem Absensi & Manajemen Kinerja
+ * SATU-SATUNYA sumber kebenaran token warna & desain tema.
+ * Ubah nilai hex di file ini untuk mengganti seluruh palet aplikasi.
+ */
+:root {
+    /* Token Brand Veloce */
+    --brand-navy: #22346D;
+    --brand-ink: #0C0F51;
+    --brand-navy-soft: #E8EBF5;
+
+    --brand-green: #0B8E43;
+    --brand-green-strong: #087A3A;
+    --brand-green-soft: #E3F4EA;
+
+    /* Permukaan & Teks */
+    --surface: #F5F7FA;
+    --card: #FFFFFF;
+    --text: #0F172A;
+    --muted: #64748B;
+    --border: #E2E8F0;
+    --on-brand: #FFFFFF;
+    --overlay: rgba(12, 15, 81, 0.65);
+
+    /* Token Status (seluruh kombinasi teks di atas -soft memenuhi kontras WCAG AA >= 4.5:1) */
+    --status-success: var(--brand-green-strong);
+    --status-success-soft: var(--brand-green-soft);
+    --status-success-ink: #065F2D;
+
+    --status-warning: #D97706;
+    --status-warning-soft: #FEF3C7;
+    --status-warning-ink: #92400E;
+
+    --status-info: #0284C7;
+    --status-info-soft: #E0F2FE;
+    --status-info-ink: #075985;
+
+    --status-danger: #DC2626;
+    --status-danger-soft: #FEE2E2;
+    --status-danger-ink: #991B1B;
+
+    --status-violet: #7C3AED;
+    --status-violet-soft: #EDE9FE;
+    --status-violet-ink: #5B21B6;
+}

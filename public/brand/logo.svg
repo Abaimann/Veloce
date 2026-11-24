@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 184 48" fill="none" role="img" aria-label="Veloce">
+  <rect x="2" y="4" width="40" height="40" rx="12" fill="#22346D"/>
+  <path d="M12 15h5l5 12.5L27 15h5l-7.7 18.5h-4.6L12 15Z" fill="#FFFFFF"/>
+  <path d="M19.2 15h5.6L22 21.2 19.2 15Z" fill="#0B8E43"/>
+  <text x="52" y="25" fill="#22346D" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui, sans-serif" font-size="19" font-weight="800" letter-spacing="1.4">VELOCE</text>
+  <text x="52" y="38" fill="#087A3A" font-family="Plus Jakarta Sans, ui-sans-serif, system-ui, sans-serif" font-size="9.5" font-weight="700" letter-spacing="0.9">SISTEM ABSENSI</text>
+</svg>

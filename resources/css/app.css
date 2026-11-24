@@ -1,0 +1,171 @@
+@import '@fontsource/plus-jakarta-sans/400.css';
+@import '@fontsource/plus-jakarta-sans/500.css';
+@import '@fontsource/plus-jakarta-sans/600.css';
+@import '@fontsource/plus-jakarta-sans/700.css';
+@import 'tailwindcss';
+@import './theme.css';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.js';
+
+@theme inline {
+    --color-*: initial;
+    --color-transparent: transparent;
+    --color-current: currentColor;
+    --color-inherit: inherit;
+
+    --color-brand-navy: var(--brand-navy);
+    --color-brand-ink: var(--brand-ink);
+    --color-brand-navy-soft: var(--brand-navy-soft);
+    --color-brand-green: var(--brand-green);
+    --color-brand-green-strong: var(--brand-green-strong);
+    --color-brand-green-soft: var(--brand-green-soft);
+
+    --color-surface: var(--surface);
+    --color-card: var(--card);
+    --color-text: var(--text);
+    --color-muted: var(--muted);
+    --color-border: var(--border);
+    --color-on-brand: var(--on-brand);
+    --color-overlay: var(--overlay);
+
+    --color-success: var(--status-success);
+    --color-success-soft: var(--status-success-soft);
+    --color-success-ink: var(--status-success-ink);
+
+    --color-warning: var(--status-warning);
+    --color-warning-soft: var(--status-warning-soft);
+    --color-warning-ink: var(--status-warning-ink);
+
+    --color-info: var(--status-info);
+    --color-info-soft: var(--status-info-soft);
+    --color-info-ink: var(--status-info-ink);
+
+    --color-danger: var(--status-danger);
+    --color-danger-soft: var(--status-danger-soft);
+    --color-danger-ink: var(--status-danger-ink);
+
+    --color-violet: var(--status-violet);
+    --color-violet-soft: var(--status-violet-soft);
+    --color-violet-ink: var(--status-violet-ink);
+
+    --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+    html,
+    body {
+        overflow-x: clip;
+        background-color: var(--surface);
+        color: var(--text);
+        font-family: var(--font-sans);
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    :focus-visible {
+        outline: 2px solid var(--brand-navy);
+        outline-offset: 2px;
+    }
+}
+
+.pb-safe {
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+
+.pt-safe {
+    padding-top: env(safe-area-inset-top);
+}
+
+.mb-safe-nav {
+    padding-bottom: calc(5.25rem + env(safe-area-inset-bottom));
+}
+
+@media (min-width: 1024px) {
+    .sidebar-desktop {
+        transition: width 300ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .sidebar-brand-header {
+        transition: padding-left 300ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .sidebar-brand-clip {
+        width: 9rem;
+        transition: width 300ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .sidebar-brand-clip img {
+        max-width: none;
+    }
+
+    .sidebar-nav-item,
+    .sidebar-user-row,
+    .sidebar-logout-btn {
+        transition: color 150ms ease, background-color 150ms ease, gap 260ms cubic-bezier(0.22, 1, 0.36, 1), padding 260ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .sidebar-label {
+        display: inline-block;
+        max-width: 11rem;
+        opacity: 1;
+        transform: translateX(0);
+        transition: max-width 260ms cubic-bezier(0.22, 1, 0.36, 1), opacity 180ms ease, transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .sidebar-badge-dot {
+        opacity: 0;
+        transform: scale(0.75);
+        pointer-events: none;
+        transition: opacity 180ms ease, transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    html[data-sidebar-collapsed="true"] .sidebar-desktop {
+        width: 5rem;
+    }
+
+    html[data-sidebar-collapsed="true"] .sidebar-brand-header {
+        padding-left: 1.45rem;
+        padding-right: 0;
+    }
+
+    html[data-sidebar-collapsed="true"] .sidebar-brand-clip {
+        width: 2.05rem;
+    }
+
+    html[data-sidebar-collapsed="true"] .sidebar-nav-item,
+    html[data-sidebar-collapsed="true"] .sidebar-user-row {
+        gap: 0;
+    }
+
+    html[data-sidebar-collapsed="true"] .sidebar-logout-btn {
+        gap: 0;
+        padding-left: 0;
+        padding-right: 0;
+    }
+
+    html[data-sidebar-collapsed="true"] .sidebar-label {
+        max-width: 0;
+        opacity: 0;
+        transform: translateX(-0.5rem);
+        overflow: hidden;
+        pointer-events: none;
+    }
+
+    html[data-sidebar-collapsed="true"] .sidebar-badge-dot {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
