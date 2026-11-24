@@ -44,15 +44,42 @@ Dokumen ini dibuat agar sesi/akun Antigravity baru dapat langsung memahami kondi
 
 ---
 
-## 3. Akun Demo (`DatabaseSeeder`)
-Password akun demo membaca variabel `DEMO_DEFAULT_PASSWORD` di `.env` lokal Anda:
-- `super_admin`: `admin@veloce.test`
-- `hr_manager`: `hr@veloce.test`
-- `payroll`: `payroll@veloce.test`
-- `dept_manager`: `manager.eng@veloce.test`, `manager.qal@veloce.test`
-- `division_head`: `head.prd@veloce.test`, `head.mnt@veloce.test`, `head.qc@veloce.test`, `head.log@veloce.test`
-- `employee` (Staff): `operator.prd@veloce.test`, `teknisi.mnt@veloce.test`, `admin.eng@veloce.test`, `inspector.qc@veloce.test`, `staff.log@veloce.test`
-- `employee` (Magang / `EmploymentType::INTERN`): `magang.prd@veloce.test`
+## 3. Akun Demo & Struktur Organisasi Perusahaan (`DatabaseSeeder`)
+Password seluruh akun demo membaca variabel `DEMO_DEFAULT_PASSWORD` di `.env` lokal Anda (default demo: `VeloceDemo!2026`).
+
+**Struktur 7 Departemen & 14 Divisi (Total 41 Karyawan + 2 Akun Sistem)**:
+1. **HR & GA (`HRGA`)**:
+   - HR & GA Manager: `hr@veloce.test` (Ratna Dewi)
+   - Divisi Rekrutmen (`HRGA-REC`): Head `head.rec@veloce.test`, Staff `staff.rec@veloce.test`
+   - Divisi General Affairs (`HRGA-GA`): Head `head.ga@veloce.test`, Staff `staff.ga@veloce.test`
+2. **Engineering & Produksi (`ENG`)**:
+   - Engineering & Production Manager: `manager.eng@veloce.test` (Budi Santoso)
+   - Divisi Produksi Kabel (`ENG-PRD`): Head `head.prd@veloce.test`, Operator `operator.prd@veloce.test`, Magang `magang.prd@veloce.test`
+   - Divisi Maintenance (`ENG-MNT`): Head `head.mnt@veloce.test`, Teknisi `teknisi.mnt@veloce.test`
+   - Staff Departemen Langsung: Admin `admin.eng@veloce.test`
+3. **Quality & Logistik (`QAL`)**:
+   - Quality & Logistics Manager: `manager.qal@veloce.test` (Andi Kurniawan)
+   - Divisi Quality Control (`QAL-QC`): Head `head.qc@veloce.test`, Inspector `inspector.qc@veloce.test`
+   - Divisi Logistik & Gudang (`QAL-LOG`): Head `head.log@veloce.test`, Staff `staff.log@veloce.test`
+4. **Teknologi Informasi & Sistem Digital (`IT`)**:
+   - IT Manager: `manager.it@veloce.test` (Irfan Hakim)
+   - Divisi Infrastruktur & Jaringan (`IT-INF`): Head `head.itinf@veloce.test`, Network `network.it@veloce.test`, Support `support.it@veloce.test`
+   - Divisi Software & ERP (`IT-DEV`): Head `head.itdev@veloce.test`, Developer `programmer.it@veloce.test`, Analyst `analyst.it@veloce.test`
+5. **Finance, Accounting & Pajak (`FIN`)**:
+   - Finance & Accounting Manager: `manager.fin@veloce.test` (Sri Wahyuni)
+   - Divisi Akuntansi (`FIN-ACC`): Head `head.acc@veloce.test`, Staff `staff.acc@veloce.test`, Kasir `staff.fin@veloce.test`
+   - Divisi Perpajakan & Audit (`FIN-TAX`): Head `head.tax@veloce.test`, Staff `staff.tax@veloce.test`
+6. **Supply Chain & Pengadaan Material (`SCM`)**:
+   - SCM & Procurement Manager: `manager.scm@veloce.test` (Bambang Irawan)
+   - Divisi Pengadaan Material (`SCM-PRC`): Head `head.prc@veloce.test`, Buyer Logam `buyer.scm@veloce.test`, Buyer Polimer `buyer2.scm@veloce.test`
+   - Divisi PPIC (`SCM-PLN`): Head `head.ppic@veloce.test`, Staff PPIC `staff.ppic@veloce.test`
+7. **Penjualan & Pemasaran Komersial (`MKT`)**:
+   - Sales & Marketing Commercial Manager: `manager.mkt@veloce.test` (Surya Pratama)
+   - Divisi OEM Otomotif (`MKT-OEM`): Head `head.oem@veloce.test`, Sales OEM `sales.oem@veloce.test`
+   - Divisi Aftermarket & Retail (`MKT-AFT`): Head `head.aft@veloce.test`, Sales Aftermarket `sales.aft@veloce.test`
+8. **Akun Sistem Khusus**:
+   - Super Admin: `admin@veloce.test` (Administrator Sistem)
+   - Payroll: `payroll@veloce.test` (Tim Payroll & Kompensasi)
 
 ---
 

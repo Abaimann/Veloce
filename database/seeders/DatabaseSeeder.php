@@ -45,6 +45,11 @@ class DatabaseSeeder extends Seeder
             $workSchedule = $this->seedMasterData();
             $this->seedLeaveTypes();
             $this->seedOrganizationAndAccounts($workSchedule, $demoPassword);
+
+            if (! app()->runningUnitTests()) {
+                $this->seedEnterpriseDepartmentsAndEmployees($workSchedule, $demoPassword);
+            }
+
             $this->seedLeaveBalances();
         });
 
@@ -350,6 +355,470 @@ class DatabaseSeeder extends Seeder
             positionTitle: 'Staff Gudang & Logistik',
             workSchedule: $workSchedule,
             joinDate: '2025-05-05',
+        );
+    }
+
+    private function seedEnterpriseDepartmentsAndEmployees(WorkSchedule $workSchedule, string $demoPassword): void
+    {
+        // 1. Tambahan Divisi & Karyawan di HR & GA (HRGA)
+        $hrga = Department::query()->where('code', 'HRGA')->firstOrFail();
+        $hrManager = Employee::query()->where('employee_number', 'DCI-HR-001')->firstOrFail();
+
+        $hrRec = $this->upsertDivision($hrga, 'HRGA-REC', 'Rekrutmen & Hubungan Industrial');
+        $hrGa = $this->upsertDivision($hrga, 'HRGA-GA', 'General Affairs & Fasilitas');
+
+        $recHead = $this->upsertEmployeeAccount(
+            email: 'head.rec@veloce.test',
+            name: 'Maya Anggraini',
+            role: RoleName::DIVISION_HEAD,
+            password: $demoPassword,
+            employeeNumber: 'DCI-HR-002',
+            department: $hrga,
+            division: $hrRec,
+            supervisor: $hrManager,
+            employmentType: EmploymentType::STAFF,
+            positionTitle: 'Kepala Divisi Rekrutmen & Hubungan Industrial',
+            workSchedule: $workSchedule,
+            joinDate: '2024-04-01',
+        );
+        $hrRec->update(['head_employee_id' => $recHead->id]);
+
+        $this->upsertEmployeeAccount(
+            email: 'staff.rec@veloce.test',
+            name: 'Bayu Pratama',
+            role: RoleName::EMPLOYEE,
+            password: $demoPassword,
+            employeeNumber: 'DCI-HR-003',
+            department: $hrga,
+            division: $hrRec,
+            supervisor: $recHead,
+            employmentType: EmploymentType::STAFF,
+            positionTitle: 'Staff Rekrutmen & Pelatihan',
+            workSchedule: $workSchedule,
+            joinDate: '2025-02-15',
+        );
+
+        $gaHead = $this->upsertEmployeeAccount(
+            email: 'head.ga@veloce.test',
+            name: 'Doni Setiawan',
+            role: RoleName::DIVISION_HEAD,
+            password: $demoPassword,
+            employeeNumber: 'DCI-HR-004',
+            department: $hrga,
+            division: $hrGa,
+            supervisor: $hrManager,
+            employmentType: EmploymentType::STAFF,
+            positionTitle: 'Kepala Divisi General Affairs',
+            workSchedule: $workSchedule,
+            joinDate: '2024-05-01',
+        );
+        $hrGa->update(['head_employee_id' => $gaHead->id]);
+
+        $this->upsertEmployeeAccount(
+            email: 'staff.ga@veloce.test',
+            name: 'Joko Susilo',
+            role: RoleName::EMPLOYEE,
+            password: $demoPassword,
+            employeeNumber: 'DCI-HR-005',
+            department: $hrga,
+            division: $hrGa,
+            supervisor: $gaHead,
+            employmentType: EmploymentType::STAFF,
+            positionTitle: 'Staff Sarana & Prasarana Pabrik',
+            workSchedule: $workSchedule,
+            joinDate: '2025-03-10',
+        );
+
+        // 2. Departemen IT (Teknologi Informasi & Sistem Digital)
+        $it = $this->upsertDepartment('IT', 'Teknologi Informasi & Sistem Digital');
+        $itInf = $this->upsertDivision($it, 'IT-INF', 'Infrastruktur & Keamanan Jaringan');
+        $itDev = $this->upsertDivision($it, 'IT-DEV', 'Pengembangan Software & ERP');
+
+        $itManager = $this->upsertEmployeeAccount(
+            email: 'manager.it@veloce.test',
+            name: 'Irfan Hakim',
+            role: RoleName::DEPT_MANAGER,
+            password: $demoPassword,
+            employeeNumber: 'DCI-IT-001',
+            department: $it,
+            division: null,
+            supervisor: null,
+            employmentType: EmploymentType::EXECUTIVE,
+            positionTitle: 'IT & Digital Systems Manager',
+            workSchedule: $workSchedule,
+            joinDate: '2024-01-15',
+        );
+        $it->update(['head_employee_id' => $itManager->id]);
+
+        $itInfHead = $this->upsertEmployeeAccount(
+            email: 'head.itinf@veloce.test',
+            name: 'Satria Wibawa',
+            role: RoleName::DIVISION_HEAD,
+            password: $demoPassword,
+            employeeNumber: 'DCI-IT-002',
+            department: $it,
+            division: $itInf,
+            supervisor: $itManager,
+            employmentType: EmploymentType::STAFF,
+            positionTitle: 'Kepala Divisi Infrastruktur Jaringan',
+            workSchedule: $workSchedule,
+            joinDate: '2024-06-01',
+        );
+        $itInf->update(['head_employee_id' => $itInfHead->id]);
+
+        $this->upsertEmployeeAccount(
+            email: 'network.it@veloce.test',
+            name: 'Kevin Sanjaya',
+            role: RoleName::EMPLOYEE,
+            password: $demoPassword,
+            employeeNumber: 'DCI-IT-003',
+            department: $it,
+            division: $itInf,
+            supervisor: $itInfHead,
+            employmentType: EmploymentType::STAFF,
+            positionTitle: 'Network & System Engineer',
+            workSchedule: $workSchedule,
+            joinDate: '2025-01-10',
+        );
+
+        $this->upsertEmployeeAccount(
+            email: 'support.it@veloce.test',
+            name: 'Rizky Maulana',
+            role: RoleName::EMPLOYEE,
+            password: $demoPassword,
+            employeeNumber: 'DCI-IT-004',
+            department: $it,
+            division: $itInf,
+            supervisor: $itInfHead,
+            employmentType: EmploymentType::STAFF,
+            positionTitle: 'IT Technical Support',
+            workSchedule: $workSchedule,
+            joinDate: '2025-04-15',
+        );
+
+        $itDevHead = $this->upsertEmployeeAccount(
+            email: 'head.itdev@veloce.test',
+            name: 'Ahmad Zaki',
+            role: RoleName::DIVISION_HEAD,
+            password: $demoPassword,
+            employeeNumber: 'DCI-IT-005',
+            department: $it,
+            division: $itDev,
+            supervisor: $itManager,
+            employmentType: EmploymentType::STAFF,
+            positionTitle: 'Kepala Divisi Software & ERP',
+            workSchedule: $workSchedule,
+            joinDate: '2024-07-01',
+        );
+        $itDev->update(['head_employee_id' => $itDevHead->id]);
+
+        $this->upsertEmployeeAccount(
+            email: 'programmer.it@veloce.test',
+            name: 'Farhan Alamsyah',
+            role: RoleName::EMPLOYEE,
+            password: $demoPassword,
+            employeeNumber: 'DCI-IT-006',
+            department: $it,
+            division: $itDev,
+            supervisor: $itDevHead,
+            employmentType: EmploymentType::STAFF,
+            positionTitle: 'Senior Web & Mobile Developer',
+            workSchedule: $workSchedule,
+            joinDate: '2025-03-01',
+        );
+
+        $this->upsertEmployeeAccount(
+            email: 'analyst.it@veloce.test',
+            name: 'Nabila Putri',
+            role: RoleName::EMPLOYEE,
+            password: $demoPassword,
+            employeeNumber: 'DCI-IT-007',
+            department: $it,
+            division: $itDev,
+            supervisor: $itDevHead,
+            employmentType: EmploymentType::STAFF,
+            positionTitle: 'Business & System Analyst',
+            workSchedule: $workSchedule,
+            joinDate: '2025-06-01',
+        );
+
+        // 3. Departemen FIN (Finance, Accounting & Tax)
+        $fin = $this->upsertDepartment('FIN', 'Finance, Accounting & Pajak');
+        $finAcc = $this->upsertDivision($fin, 'FIN-ACC', 'Akuntansi & Keuangan Operasional');
+        $finTax = $this->upsertDivision($fin, 'FIN-TAX', 'Perpajakan & Audit Internal');
+
+        $finManager = $this->upsertEmployeeAccount(
+            email: 'manager.fin@veloce.test',
+            name: 'Sri Wahyuni',
+            role: RoleName::DEPT_MANAGER,
+            password: $demoPassword,
+            employeeNumber: 'DCI-FIN-001',
+            department: $fin,
+            division: null,
+            supervisor: null,
+            employmentType: EmploymentType::EXECUTIVE,
+            positionTitle: 'Finance & Accounting Manager',
+            workSchedule: $workSchedule,
+            joinDate: '2024-01-20',
+        );
+        $fin->update(['head_employee_id' => $finManager->id]);
+
+        $finAccHead = $this->upsertEmployeeAccount(
+            email: 'head.acc@veloce.test',
+            name: 'Cindy Permata',
+            role: RoleName::DIVISION_HEAD,
+            password: $demoPassword,
+            employeeNumber: 'DCI-FIN-002',
+            department: $fin,
+            division: $finAcc,
+            supervisor: $finManager,
+            employmentType: EmploymentType::STAFF,
+            positionTitle: 'Kepala Divisi Akuntansi',
+            workSchedule: $workSchedule,
+            joinDate: '2024-05-15',
+        );
+        $finAcc->update(['head_employee_id' => $finAccHead->id]);
+
+        $this->upsertEmployeeAccount(
+            email: 'staff.acc@veloce.test',
+            name: 'Dian Kusumawati',
+            role: RoleName::EMPLOYEE,
+            password: $demoPassword,
+            employeeNumber: 'DCI-FIN-003',
+            department: $fin,
+            division: $finAcc,
+            supervisor: $finAccHead,
+            employmentType: EmploymentType::STAFF,
+            positionTitle: 'Staff Akuntansi Keuangan',
+            workSchedule: $workSchedule,
+            joinDate: '2025-02-01',
+        );
+
+        $this->upsertEmployeeAccount(
+            email: 'staff.fin@veloce.test',
+            name: 'Eko Prasetyo',
+            role: RoleName::EMPLOYEE,
+            password: $demoPassword,
+            employeeNumber: 'DCI-FIN-004',
+            department: $fin,
+            division: $finAcc,
+            supervisor: $finAccHead,
+            employmentType: EmploymentType::STAFF,
+            positionTitle: 'Staff Kasir & Perbendaharaan',
+            workSchedule: $workSchedule,
+            joinDate: '2025-04-20',
+        );
+
+        $finTaxHead = $this->upsertEmployeeAccount(
+            email: 'head.tax@veloce.test',
+            name: 'Gunawan Santosa',
+            role: RoleName::DIVISION_HEAD,
+            password: $demoPassword,
+            employeeNumber: 'DCI-FIN-005',
+            department: $fin,
+            division: $finTax,
+            supervisor: $finManager,
+            employmentType: EmploymentType::STAFF,
+            positionTitle: 'Kepala Divisi Perpajakan & Audit',
+            workSchedule: $workSchedule,
+            joinDate: '2024-08-01',
+        );
+        $finTax->update(['head_employee_id' => $finTaxHead->id]);
+
+        $this->upsertEmployeeAccount(
+            email: 'staff.tax@veloce.test',
+            name: 'Hani Amalia',
+            role: RoleName::EMPLOYEE,
+            password: $demoPassword,
+            employeeNumber: 'DCI-FIN-006',
+            department: $fin,
+            division: $finTax,
+            supervisor: $finTaxHead,
+            employmentType: EmploymentType::STAFF,
+            positionTitle: 'Staff Administrasi Pajak (Tax Officer)',
+            workSchedule: $workSchedule,
+            joinDate: '2025-05-12',
+        );
+
+        // 4. Departemen SCM (Supply Chain Management & Procurement)
+        $scm = $this->upsertDepartment('SCM', 'Supply Chain & Pengadaan Material');
+        $scmPrc = $this->upsertDivision($scm, 'SCM-PRC', 'Pengadaan Material & Vendor');
+        $scmPln = $this->upsertDivision($scm, 'SCM-PLN', 'Perencanaan Produksi & Inventori');
+
+        $scmManager = $this->upsertEmployeeAccount(
+            email: 'manager.scm@veloce.test',
+            name: 'Bambang Irawan',
+            role: RoleName::DEPT_MANAGER,
+            password: $demoPassword,
+            employeeNumber: 'DCI-SCM-001',
+            department: $scm,
+            division: null,
+            supervisor: null,
+            employmentType: EmploymentType::EXECUTIVE,
+            positionTitle: 'Supply Chain & Procurement Manager',
+            workSchedule: $workSchedule,
+            joinDate: '2024-02-10',
+        );
+        $scm->update(['head_employee_id' => $scmManager->id]);
+
+        $scmPrcHead = $this->upsertEmployeeAccount(
+            email: 'head.prc@veloce.test',
+            name: 'Anita Rahmawati',
+            role: RoleName::DIVISION_HEAD,
+            password: $demoPassword,
+            employeeNumber: 'DCI-SCM-002',
+            department: $scm,
+            division: $scmPrc,
+            supervisor: $scmManager,
+            employmentType: EmploymentType::STAFF,
+            positionTitle: 'Kepala Divisi Pengadaan & Vendor',
+            workSchedule: $workSchedule,
+            joinDate: '2024-06-20',
+        );
+        $scmPrc->update(['head_employee_id' => $scmPrcHead->id]);
+
+        $this->upsertEmployeeAccount(
+            email: 'buyer.scm@veloce.test',
+            name: 'Ilham Ramadhan',
+            role: RoleName::EMPLOYEE,
+            password: $demoPassword,
+            employeeNumber: 'DCI-SCM-003',
+            department: $scm,
+            division: $scmPrc,
+            supervisor: $scmPrcHead,
+            employmentType: EmploymentType::STAFF,
+            positionTitle: 'Purchasing Officer (Bahan Baku Logam)',
+            workSchedule: $workSchedule,
+            joinDate: '2025-01-20',
+        );
+
+        $this->upsertEmployeeAccount(
+            email: 'buyer2.scm@veloce.test',
+            name: 'Tiara Maharani',
+            role: RoleName::EMPLOYEE,
+            password: $demoPassword,
+            employeeNumber: 'DCI-SCM-004',
+            department: $scm,
+            division: $scmPrc,
+            supervisor: $scmPrcHead,
+            employmentType: EmploymentType::STAFF,
+            positionTitle: 'Purchasing Officer (Komponen Polimer & Kemasan)',
+            workSchedule: $workSchedule,
+            joinDate: '2025-03-25',
+        );
+
+        $scmPlnHead = $this->upsertEmployeeAccount(
+            email: 'head.ppic@veloce.test',
+            name: 'Yoga Saputra',
+            role: RoleName::DIVISION_HEAD,
+            password: $demoPassword,
+            employeeNumber: 'DCI-SCM-005',
+            department: $scm,
+            division: $scmPln,
+            supervisor: $scmManager,
+            employmentType: EmploymentType::STAFF,
+            positionTitle: 'Kepala Divisi PPIC',
+            workSchedule: $workSchedule,
+            joinDate: '2024-07-15',
+        );
+        $scmPln->update(['head_employee_id' => $scmPlnHead->id]);
+
+        $this->upsertEmployeeAccount(
+            email: 'staff.ppic@veloce.test',
+            name: 'Rian Hidayat',
+            role: RoleName::EMPLOYEE,
+            password: $demoPassword,
+            employeeNumber: 'DCI-SCM-006',
+            department: $scm,
+            division: $scmPln,
+            supervisor: $scmPlnHead,
+            employmentType: EmploymentType::STAFF,
+            positionTitle: 'Staff Pengendalian Inventori & Jadwal',
+            workSchedule: $workSchedule,
+            joinDate: '2025-05-15',
+        );
+
+        // 5. Departemen MKT (Pemasaran & Penjualan Komersial)
+        $mkt = $this->upsertDepartment('MKT', 'Penjualan & Pemasaran Komersial');
+        $mktOem = $this->upsertDivision($mkt, 'MKT-OEM', 'Penjualan Industri & OEM Otomotif');
+        $mktAft = $this->upsertDivision($mkt, 'MKT-AFT', 'Aftermarket & Distribusi Retail');
+
+        $mktManager = $this->upsertEmployeeAccount(
+            email: 'manager.mkt@veloce.test',
+            name: 'Surya Pratama',
+            role: RoleName::DEPT_MANAGER,
+            password: $demoPassword,
+            employeeNumber: 'DCI-MKT-001',
+            department: $mkt,
+            division: null,
+            supervisor: null,
+            employmentType: EmploymentType::EXECUTIVE,
+            positionTitle: 'Sales & Marketing Commercial Manager',
+            workSchedule: $workSchedule,
+            joinDate: '2024-02-01',
+        );
+        $mkt->update(['head_employee_id' => $mktManager->id]);
+
+        $mktOemHead = $this->upsertEmployeeAccount(
+            email: 'head.oem@veloce.test',
+            name: 'Denny Kurnia',
+            role: RoleName::DIVISION_HEAD,
+            password: $demoPassword,
+            employeeNumber: 'DCI-MKT-002',
+            department: $mkt,
+            division: $mktOem,
+            supervisor: $mktManager,
+            employmentType: EmploymentType::STAFF,
+            positionTitle: 'Kepala Divisi Penjualan OEM',
+            workSchedule: $workSchedule,
+            joinDate: '2024-05-10',
+        );
+        $mktOem->update(['head_employee_id' => $mktOemHead->id]);
+
+        $this->upsertEmployeeAccount(
+            email: 'sales.oem@veloce.test',
+            name: 'Aditya Nugraha',
+            role: RoleName::EMPLOYEE,
+            password: $demoPassword,
+            employeeNumber: 'DCI-MKT-003',
+            department: $mkt,
+            division: $mktOem,
+            supervisor: $mktOemHead,
+            employmentType: EmploymentType::STAFF,
+            positionTitle: 'Key Account Executive (OEM)',
+            workSchedule: $workSchedule,
+            joinDate: '2025-02-10',
+        );
+
+        $mktAftHead = $this->upsertEmployeeAccount(
+            email: 'head.aft@veloce.test',
+            name: 'Wahyu Utomo',
+            role: RoleName::DIVISION_HEAD,
+            password: $demoPassword,
+            employeeNumber: 'DCI-MKT-004',
+            department: $mkt,
+            division: $mktAft,
+            supervisor: $mktManager,
+            employmentType: EmploymentType::STAFF,
+            positionTitle: 'Kepala Divisi Aftermarket & Retail',
+            workSchedule: $workSchedule,
+            joinDate: '2024-08-20',
+        );
+        $mktAft->update(['head_employee_id' => $mktAftHead->id]);
+
+        $this->upsertEmployeeAccount(
+            email: 'sales.aft@veloce.test',
+            name: 'Putri Utami',
+            role: RoleName::EMPLOYEE,
+            password: $demoPassword,
+            employeeNumber: 'DCI-MKT-005',
+            department: $mkt,
+            division: $mktAft,
+            supervisor: $mktAftHead,
+            employmentType: EmploymentType::STAFF,
+            positionTitle: 'Sales Representative Jawa Barat',
+            workSchedule: $workSchedule,
+            joinDate: '2025-04-05',
         );
     }
 
